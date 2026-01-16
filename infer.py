@@ -225,17 +225,32 @@ async def main():
         question = args.question
     else:
         # Generate from template
-        from env import Actor
-        actor = Actor(api_key=api_key)
+        if args.template:
+            # Use specific template - import templates to trigger registration
+            import liveweb_arena.plugins.taostats.templates  # noqa
+            import liveweb_arena.plugins.weather.templates  # noqa
+            from liveweb_arena.core.validators.base import get_registered_templates
+            registered = get_registered_templates()
+            if args.template not in registered:
+                print(f"Error: Unknown template '{args.template}'")
+                print(f"Available templates: {list(registered.keys())}")
+                sys.exit(1)
+            template = registered[args.template]()
+            generated = template.generate(args.seed)
+            question = generated.question_text
+            plugin_hint = ""
+        else:
+            from env import Actor
+            actor = Actor(api_key=api_key)
 
-        task = await actor.task_manager.generate_composite_task(
-            seed=args.seed,
-            num_subtasks=1,
-            plugin_names=[args.plugin],
-        )
+            task = await actor.task_manager.generate_composite_task(
+                seed=args.seed,
+                num_subtasks=1,
+                plugin_names=[args.plugin],
+            )
 
-        question = task.subtasks[0].intent
-        plugin_hint = task.plugin_hints.get(args.plugin, "")
+            question = task.subtasks[0].intent
+            plugin_hint = task.plugin_hints.get(args.plugin, "")
 
         print(f"Generated question (seed={args.seed}):")
         print(f"  {question}")
