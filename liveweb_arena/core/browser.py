@@ -323,18 +323,25 @@ class BrowserEngine:
             return BrowserSession(context, page)
 
     async def stop(self):
-        """Stop browser and Playwright"""
-        async with self._lock:
-            if self._browser:
-                try:
-                    await self._browser.close()
-                except Exception:
-                    pass
-                self._browser = None
+        """Stop browser and Playwright with timeout"""
+        try:
+            # 使用超时避免无限等待锁
+            async with asyncio.timeout(5):
+                async with self._lock:
+                    if self._browser:
+                        try:
+                            await asyncio.wait_for(self._browser.close(), timeout=3)
+                        except Exception:
+                            pass
+                        self._browser = None
 
-            if self._playwright:
-                try:
-                    await self._playwright.stop()
-                except Exception:
-                    pass
-                self._playwright = None
+                    if self._playwright:
+                        try:
+                            await asyncio.wait_for(self._playwright.stop(), timeout=3)
+                        except Exception:
+                            pass
+                        self._playwright = None
+        except asyncio.TimeoutError:
+            # 超时则强制清理引用
+            self._browser = None
+            self._playwright = None

@@ -39,22 +39,17 @@ DEFAULT_TASK_RULES = """Task-Specific Rules:
 - Score 0.0: Answers do not match"""
 
 # Prompt for validating answers when no ground truth is available
-NO_GROUND_TRUTH_PROMPT = """You are an answer validator. The ground truth is not available, so evaluate if the agent's answer is plausible and well-formed.
+NO_GROUND_TRUTH_PROMPT = """You are an answer validator. The ground truth is not available, so evaluate based on the task-specific rules and answer quality.
 
 Question: {question}
 Agent's Answer: {actual}
 
 {task_specific_rules}
 
-Evaluation Criteria:
-1. Is the answer format appropriate for the question type?
-2. Does the answer appear to be real data (not placeholder/error)?
-3. Is the answer specific and complete?
-
-Score Guidelines:
-- Score 1.0: Answer is specific, well-formatted, and plausible
-- Score 0.5: Answer is partially complete or format is unclear
-- Score 0.0: Answer is clearly wrong, empty, or an error message
+If no task-specific rules provided, use these defaults:
+- Score 1.0: Answer is specific with concrete data (names, numbers, percentages)
+- Score 0.5: Answer is vague or missing key details
+- Score 0.0: No answer, error message, or clearly invalid
 
 Output ONLY a JSON object: {{"score": <0.0, 0.5, or 1.0>, "reasoning": "<brief max 30 words>"}}
 """

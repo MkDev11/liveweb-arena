@@ -29,7 +29,7 @@ class LLMClient:
     MAX_DELAY = 10.0  # seconds
 
     # Default timeout per request (should be less than total eval timeout)
-    DEFAULT_TIMEOUT = 60  # seconds
+    DEFAULT_TIMEOUT = 600  # seconds
 
     def __init__(self, base_url: str, api_key: str, default_timeout: int = None):
         """

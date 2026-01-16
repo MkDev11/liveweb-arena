@@ -111,21 +111,21 @@ class ValidatorTemplate(QuestionTemplate):
 
         if metric == "top_by_stake":
             return """Task-Specific Rules (Top Validator by Stake):
-- Score 1.0: Agent provides validator name with stake amount (e.g., "tao.bot with 838,705 TAO")
+- Score 1.0: Agent provides validator name with stake amount (numeric value)
 - Score 0.5: Agent provides validator name only without stake amount
-- Score 0.0: No answer or clearly wrong validator"""
+- Score 0.0: No answer, error message, or invalid format"""
 
         if metric == "top_by_nominations":
             return """Task-Specific Rules (Top Validator by Nominations):
-- Score 1.0: Agent provides validator name with nomination count
-- Score 0.5: Agent provides validator name only
-- Score 0.0: No answer or clearly wrong"""
+- Score 1.0: Agent provides validator name with nomination count (numeric value)
+- Score 0.5: Agent provides validator name only without count
+- Score 0.0: No answer, error message, or invalid format"""
 
         if metric == "top_by_dominance":
             return """Task-Specific Rules (Top Validator by Dominance):
 - Score 1.0: Agent provides validator name with dominance percentage
-- Score 0.5: Agent provides validator name only
-- Score 0.0: No answer or clearly wrong"""
+- Score 0.5: Agent provides validator name only without percentage
+- Score 0.0: No answer, error message, or invalid format"""
 
         return """Task-Specific Rules:
 - Score 1.0: Specific, well-formatted answer
