@@ -163,6 +163,9 @@ class Actor:
             metric=metric,
         )
         log("Actor", f"Generated {len(task.subtasks)} subtasks, seed={seed}")
+        for i, subtask in enumerate(task.subtasks, 1):
+            q = subtask.intent
+            log("Actor", f"  [{i}] {q[:100]}{'...' if len(q) > 100 else ''}")
 
         # Create isolated browser session
         session = await self.browser.new_session()
@@ -179,6 +182,9 @@ class Actor:
             # Fetch ground truths BEFORE agent starts (same time point as AI query)
             ground_truths = await self._fetch_ground_truths_with_retry(task.subtasks)
             log("Actor", f"Ground truths fetched: {list(ground_truths.keys())}")
+            for tag, gt in ground_truths.items():
+                gt_str = str(gt)[:100] + "..." if len(str(gt)) > 100 else str(gt)
+                log("Actor", f"  [{tag}] Expected: {gt_str}")
 
             # Track failure reasons
             failure_reason = None
