@@ -62,6 +62,7 @@ class WeatherPlugin(BasePlugin):
 - URL: https://wttr.in/{city} (e.g., /London, /New+York, /~Eiffel+Tower)
 - Shows current conditions + 3-day forecast (Morning/Noon/Evening/Night)
 - Temperature +25(28)°C means 25°C actual, 28°C feels-like
+- For humidity: use ?format=j1 for JSON with `weather[0..2].hourly[*].humidity`
 """
 
     async def generate_task(

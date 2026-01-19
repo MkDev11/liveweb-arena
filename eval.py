@@ -63,14 +63,14 @@ async def main():
         "--plugins",
         type=str,
         nargs="+",
-        default=["weather"],
-        help="Plugins to use (default: weather)",
+        default=None,
+        help="Plugins to use (default: random from all available)",
     )
     parser.add_argument(
         "--max-steps",
         type=int,
-        default=20,
-        help="Maximum browser interaction steps (default: 20)",
+        default=None,
+        help="Maximum browser interaction steps (default: auto based on task complexity)",
     )
     parser.add_argument(
         "--timeout",

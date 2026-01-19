@@ -175,13 +175,16 @@ class AgentPolicy:
         trajectory: List[TrajectoryStep],
     ) -> str:
         """Build step prompt with current observation and recent history"""
-        # Format recent actions
+        # Format recent actions WITH thoughts (so model remembers its reasoning)
         recent = trajectory[-self._max_recent_steps:] if trajectory else []
         if recent:
             action_lines = []
             for step in recent:
                 if step.action:
-                    action_str = f"Step {step.step_num}: {step.action.action_type}"
+                    # Include thought so model remembers what it found
+                    if step.thought:
+                        action_lines.append(f"Step {step.step_num} thought: {step.thought}")
+                    action_str = f"Step {step.step_num} action: {step.action.action_type}"
                     if step.action.params:
                         action_str += f" {json.dumps(step.action.params)}"
                     action_str += f" -> {step.action_result}"

@@ -60,7 +60,7 @@ class Actor:
         seed: Optional[int] = None,
         num_subtasks: int = 2,
         plugins: Optional[List[str]] = None,
-        max_steps: int = 30,
+        max_steps: Optional[int] = None,
         timeout: int = 3600,
         temperature: float = 0.7,
         max_concurrency: int = 2,
@@ -145,7 +145,7 @@ class Actor:
         seed: int,
         num_subtasks: int,
         plugins: Optional[List[str]],
-        max_steps: int,
+        max_steps: Optional[int],
         timeout: int,
         temperature: float,
         validation_model: Optional[str] = None,
@@ -168,11 +168,14 @@ class Actor:
             log("Actor", f"  [{i}] {q[:100]}{'...' if len(q) > 100 else ''}")
 
         # Calculate effective max_steps from subtasks
-        # Use the sum of expected_steps from all subtasks, but at least the provided max_steps
         total_expected_steps = sum(st.expected_steps for st in task.subtasks)
-        effective_max_steps = max(max_steps, total_expected_steps)
-        if effective_max_steps != max_steps:
-            log("Actor", f"Adjusted max_steps: {max_steps} -> {effective_max_steps} (based on task complexity)")
+        if max_steps is None:
+            # Auto mode: use task-based calculation
+            effective_max_steps = total_expected_steps
+        else:
+            # Use the larger of provided max_steps and task requirements
+            effective_max_steps = max(max_steps, total_expected_steps)
+        log("Actor", f"Max steps: {effective_max_steps} (from {len(task.subtasks)} subtasks)")
 
         # Create isolated browser session
         session = await self.browser.new_session()
@@ -202,11 +205,8 @@ class Actor:
                     agent_loop.run(task=task, model=model, temperature=temperature, seed=seed),
                     timeout=timeout,
                 )
-                # Check for loop detection or max steps
-                if agent_loop.is_loop_detected():
-                    failure_reason = "loop_detected"
-                    log("Actor", "Agent stuck in loop - marking as failed", force=True)
-                elif agent_loop.is_max_steps_reached():
+                # Check if max steps reached without completion
+                if agent_loop.is_max_steps_reached():
                     failure_reason = "max_steps_reached"
                     log("Actor", "Max steps reached without completion - marking as failed", force=True)
             except asyncio.TimeoutError:
