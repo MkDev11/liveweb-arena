@@ -25,18 +25,26 @@ class BrowserSession:
         self._page = page
         self._browser = browser  # Only set in strict isolation mode
 
-    async def goto(self, url: str) -> BrowserObservation:
-        """Navigate to URL and return observation"""
-        try:
-            await self._page.goto(url, wait_until="domcontentloaded", timeout=NAVIGATION_TIMEOUT_MS)
-            # Wait a bit for dynamic content
-            await self._page.wait_for_load_state("networkidle", timeout=10000)
-        except Exception:
-            # Network idle timeout is acceptable, page may still be usable
-            pass
+    async def goto(self, url: str, max_retries: int = 3) -> BrowserObservation:
+        """Navigate to URL and return observation with automatic retry on failure"""
+        for attempt in range(max_retries):
+            try:
+                await self._page.goto(url, wait_until="domcontentloaded", timeout=NAVIGATION_TIMEOUT_MS)
+                # Wait a bit for dynamic content
+                await self._page.wait_for_load_state("networkidle", timeout=10000)
+            except Exception:
+                # Network idle timeout is acceptable, page may still be usable
+                pass
+            # Check if navigation failed
+            current_url = self._page.url
+            if not current_url.startswith("chrome-error://"):
+                break  # Navigation succeeded
+            # Wait before retry
+            if attempt < max_retries - 1:
+                await asyncio.sleep(1.0 * (attempt + 1))
         return await self._get_observation()
 
-    async def execute_action(self, action: BrowserAction) -> BrowserObservation:
+    async def execute_action(self, action: BrowserAction, max_nav_retries: int = 3) -> BrowserObservation:
         """Execute browser action and return new observation"""
         action_type = action.action_type
         params = action.params
@@ -44,11 +52,20 @@ class BrowserSession:
         try:
             if action_type == "goto":
                 url = params.get("url", "")
-                await self._page.goto(url, wait_until="domcontentloaded", timeout=NAVIGATION_TIMEOUT_MS)
-                try:
-                    await self._page.wait_for_load_state("networkidle", timeout=10000)
-                except Exception:
-                    pass
+                # Retry navigation if it fails (chrome-error://)
+                for nav_attempt in range(max_nav_retries):
+                    await self._page.goto(url, wait_until="domcontentloaded", timeout=NAVIGATION_TIMEOUT_MS)
+                    try:
+                        await self._page.wait_for_load_state("networkidle", timeout=10000)
+                    except Exception:
+                        pass
+                    # Check if navigation failed
+                    current_url = self._page.url
+                    if not current_url.startswith("chrome-error://"):
+                        break  # Navigation succeeded
+                    # Wait before retry
+                    if nav_attempt < max_nav_retries - 1:
+                        await asyncio.sleep(1.0 * (nav_attempt + 1))
 
             elif action_type == "click":
                 selector = params.get("selector", "")
