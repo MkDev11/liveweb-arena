@@ -21,7 +21,7 @@ class WeatherPlugin(BasePlugin):
     """
 
     # Weather-specific template names
-    WEATHER_TEMPLATES = {"location_name", "current_weather", "multi_day", "time_of_day", "astronomy"}
+    WEATHER_TEMPLATES = {"location_name", "current_weather", "multi_day", "time_of_day", "astronomy", "weather_comparison"}
 
     def __init__(self, templates: List[str] = None, use_chinese: bool = False):
         self.use_chinese = use_chinese

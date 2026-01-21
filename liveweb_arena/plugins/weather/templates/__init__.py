@@ -4,6 +4,7 @@
 from .templates import LocationNameWeatherTemplate, CurrentWeatherTemplate, MultiDayWeatherTemplate
 from .time_of_day import TimeOfDayWeatherTemplate
 from .astronomy import AstronomyTemplate
+from .comparison import WeatherComparisonTemplate
 
 # Re-export registration utilities from core
 from liveweb_arena.core.validators.base import register_template, get_registered_templates, get_template
@@ -21,6 +22,7 @@ __all__ = [
     "MultiDayWeatherTemplate",
     "TimeOfDayWeatherTemplate",
     "AstronomyTemplate",
+    "WeatherComparisonTemplate",
     # Registration utilities
     "register_template",
     "get_registered_templates",
