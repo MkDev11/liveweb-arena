@@ -46,7 +46,12 @@ class CoinGeckoPlugin(BasePlugin):
 
     @property
     def supported_sites(self) -> List[str]:
-        return ["coingecko.com", "api.coingecko.com"]
+        return ["coingecko.com"]
+
+    @property
+    def blocked_url_patterns(self) -> List[str]:
+        # Block API access to force agents to use the actual website
+        return ["*api.coingecko.com*"]
 
     @property
     def description(self) -> str:
@@ -57,13 +62,8 @@ class CoinGeckoPlugin(BasePlugin):
         return """## coingecko.com (Cryptocurrency)
 - Website: https://www.coingecko.com/en/coins/{coin_id}
 - Shows price, market cap, 24h change, volume, supply info
-- Coin pages: /en/coins/bitcoin, /en/coins/ethereum, /en/coins/solana
-
-**API: https://api.coingecko.com/api/v3/**
-- /simple/price?ids={ids}&vs_currencies=usd - Current prices
-- /coins/{id} - Detailed coin info including 24h change
-- /coins/markets?vs_currency=usd - Market data with rankings
-- Common coin IDs: bitcoin, ethereum, solana, cardano, dogecoin, ripple
+- Example pages: /en/coins/bitcoin, /en/coins/ethereum, /en/coins/solana
+- Use the search bar or navigate to coin pages directly
 """
 
     async def generate_task(

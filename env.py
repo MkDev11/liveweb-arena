@@ -178,6 +178,26 @@ class Actor:
         # Create isolated browser session
         session = await self.browser.new_session()
 
+        # Collect allowed domains from all plugins (whitelist)
+        allowed_domains = set()
+        for subtask in task.subtasks:
+            plugin = self.task_manager.get_plugin(subtask.plugin_name)
+            if plugin and hasattr(plugin, 'allowed_domains'):
+                allowed_domains.update(plugin.allowed_domains)
+        if allowed_domains:
+            await session.set_allowed_domains(list(allowed_domains))
+            log("Actor", f"Allowed domains: {sorted(allowed_domains)}")
+
+        # Collect and apply blocked URL patterns from all plugins in this task
+        blocked_patterns = []
+        for subtask in task.subtasks:
+            plugin = self.task_manager.get_plugin(subtask.plugin_name)
+            if plugin and hasattr(plugin, 'blocked_url_patterns'):
+                blocked_patterns.extend(plugin.blocked_url_patterns)
+        if blocked_patterns:
+            await session.block_urls(list(set(blocked_patterns)))  # Dedupe
+            log("Actor", f"Blocked URL patterns: {blocked_patterns}")
+
         try:
             llm_client = LLMClient(base_url=base_url, api_key=api_key)
 

@@ -43,20 +43,52 @@ class MetricSpec:
 class CoinVariable:
     """Variable for cryptocurrency selection"""
 
-    # Major cryptocurrencies with stable CoinGecko IDs
+    # Cryptocurrencies with stable CoinGecko IDs
     COINS: List[CoinSpec] = [
+        # Top 10 by market cap
         CoinSpec("bitcoin", "BTC", "Bitcoin"),
         CoinSpec("ethereum", "ETH", "Ethereum"),
-        CoinSpec("solana", "SOL", "Solana"),
-        CoinSpec("cardano", "ADA", "Cardano"),
-        CoinSpec("dogecoin", "DOGE", "Dogecoin"),
+        CoinSpec("tether", "USDT", "Tether"),
         CoinSpec("ripple", "XRP", "XRP"),
-        CoinSpec("polkadot", "DOT", "Polkadot"),
+        CoinSpec("solana", "SOL", "Solana"),
+        CoinSpec("binancecoin", "BNB", "BNB"),
+        CoinSpec("dogecoin", "DOGE", "Dogecoin"),
+        CoinSpec("usd-coin", "USDC", "USD Coin"),
+        CoinSpec("cardano", "ADA", "Cardano"),
+        CoinSpec("staked-ether", "STETH", "Lido Staked Ether"),
+        # Top 11-30
+        CoinSpec("tron", "TRX", "TRON"),
         CoinSpec("avalanche-2", "AVAX", "Avalanche"),
         CoinSpec("chainlink", "LINK", "Chainlink"),
-        CoinSpec("litecoin", "LTC", "Litecoin"),
-        CoinSpec("uniswap", "UNI", "Uniswap"),
+        CoinSpec("sui", "SUI", "Sui"),
         CoinSpec("stellar", "XLM", "Stellar"),
+        CoinSpec("hedera-hashgraph", "HBAR", "Hedera"),
+        CoinSpec("shiba-inu", "SHIB", "Shiba Inu"),
+        CoinSpec("polkadot", "DOT", "Polkadot"),
+        CoinSpec("litecoin", "LTC", "Litecoin"),
+        CoinSpec("bitcoin-cash", "BCH", "Bitcoin Cash"),
+        CoinSpec("uniswap", "UNI", "Uniswap"),
+        CoinSpec("near", "NEAR", "NEAR Protocol"),
+        CoinSpec("aptos", "APT", "Aptos"),
+        CoinSpec("internet-computer", "ICP", "Internet Computer"),
+        CoinSpec("pepe", "PEPE", "Pepe"),
+        # AI & Compute tokens
+        CoinSpec("bittensor", "TAO", "Bittensor"),
+        CoinSpec("render-token", "RENDER", "Render"),
+        CoinSpec("fetch-ai", "FET", "Fetch.ai"),
+        CoinSpec("akash-network", "AKT", "Akash Network"),
+        # DeFi & Layer 2
+        CoinSpec("arbitrum", "ARB", "Arbitrum"),
+        CoinSpec("optimism", "OP", "Optimism"),
+        CoinSpec("polygon-ecosystem-token", "POL", "Polygon"),
+        CoinSpec("aave", "AAVE", "Aave"),
+        CoinSpec("maker", "MKR", "Maker"),
+        # Other notable coins
+        CoinSpec("cosmos", "ATOM", "Cosmos"),
+        CoinSpec("filecoin", "FIL", "Filecoin"),
+        CoinSpec("the-graph", "GRT", "The Graph"),
+        CoinSpec("injective-protocol", "INJ", "Injective"),
+        CoinSpec("monero", "XMR", "Monero"),
     ]
 
     def __init__(self, allowed_coins: List[str] = None):

@@ -142,3 +142,30 @@ class BasePlugin(ABC):
             TriggerConfig or None (None means fetch at end as fallback)
         """
         return None
+
+    @property
+    def blocked_url_patterns(self) -> List[str]:
+        """
+        URL patterns to block during evaluation.
+
+        Use this to prevent agents from accessing APIs directly,
+        forcing them to interact with the actual website.
+
+        Returns:
+            List of URL patterns (supports * wildcard)
+            Example: ["*api.example.com*", "*//example.com/api/*"]
+        """
+        return []
+
+    @property
+    def allowed_domains(self) -> List[str]:
+        """
+        Domains the agent is allowed to visit for this plugin.
+
+        By default, returns supported_sites. Override to add additional
+        allowed domains (e.g., CDN domains, authentication domains).
+
+        Returns:
+            List of allowed domain names (without protocol)
+        """
+        return self.supported_sites

@@ -32,6 +32,71 @@ class BrowserSession:
         self._view_offset = 0
         self._last_full_content = ""
         self._last_url = ""
+        self._blocked_patterns = []
+        self._allowed_domains = None  # None means allow all
+
+    async def set_allowed_domains(self, domains: list):
+        """
+        Set whitelist of allowed domains.
+
+        Only requests to these domains will be allowed. All other requests
+        will be blocked. This prevents agents from cheating by visiting
+        external websites, search engines, or AI services.
+
+        Args:
+            domains: List of allowed domain names (without protocol)
+                    Example: ["wttr.in", "coingecko.com"]
+        """
+        from urllib.parse import urlparse
+
+        self._allowed_domains = set(d.lower() for d in domains)
+
+        async def check_domain(route):
+            url = route.request.url
+            # Always allow about:blank
+            if url == "about:blank" or url.startswith("about:"):
+                await route.continue_()
+                return
+
+            try:
+                parsed = urlparse(url)
+                domain = parsed.netloc.lower()
+                # Remove port if present
+                if ":" in domain:
+                    domain = domain.split(":")[0]
+
+                # Check if domain or any parent domain is allowed
+                # e.g., if "coingecko.com" is allowed, "www.coingecko.com" is also allowed
+                is_allowed = False
+                for allowed in self._allowed_domains:
+                    if domain == allowed or domain.endswith("." + allowed):
+                        is_allowed = True
+                        break
+
+                if is_allowed:
+                    await route.continue_()
+                else:
+                    await route.abort("blockedbyclient")
+            except Exception:
+                await route.abort("blockedbyclient")
+
+        # Intercept all requests
+        await self._context.route("**/*", check_domain)
+
+    async def block_urls(self, patterns: list):
+        """
+        Block URLs matching the given patterns.
+
+        Uses Playwright's route interception to abort requests to blocked URLs.
+        This forces agents to use actual websites instead of APIs.
+
+        Args:
+            patterns: List of URL patterns (supports * wildcard)
+                     Example: ["*api.example.com*"]
+        """
+        self._blocked_patterns.extend(patterns)
+        for pattern in patterns:
+            await self._context.route(pattern, lambda route: route.abort())
 
     async def goto(self, url: str, max_retries: int = 3) -> BrowserObservation:
         """Navigate to URL and return observation with automatic retry on failure"""
