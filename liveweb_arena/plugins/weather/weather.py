@@ -64,6 +64,7 @@ class WeatherPlugin(BasePlugin):
 - Time periods: Morning (06:00), Noon (12:00), Evening (18:00), Night (00:00)
 - Temperature format: +25(28)°C means 25°C actual, 28°C feels-like
 - Each time period shows: temperature, wind, humidity, precipitation chance
+- For humidity: use ?format=j1 for JSON with `weather[0..2].hourly[*].humidity`
 """
 
     async def generate_task(

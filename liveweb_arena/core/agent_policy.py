@@ -58,27 +58,33 @@ You must respond with a single JSON object (no markdown, no extra text). The JSO
    {{"action": {{"type": "press", "params": {{"key": "Enter"}}}}}}
    ```
 
-5. **scroll** - Scroll the page
+5. **scroll** - Scroll the page (for loading dynamic content)
    ```json
    {{"action": {{"type": "scroll", "params": {{"direction": "down", "amount": 300}}}}}}
    ```
 
-6. **wait** - Wait for a duration
+6. **view_more** - View more truncated content (when page content is cut off)
+   ```json
+   {{"action": {{"type": "view_more", "params": {{"direction": "down"}}}}}}
+   ```
+   Use this when you see "... (content below, use view_more direction=down to see)" to view hidden content.
+
+7. **wait** - Wait for a duration
    ```json
    {{"action": {{"type": "wait", "params": {{"seconds": 2}}}}}}
    ```
 
-7. **click_role** - Click by accessibility role (more stable)
+8. **click_role** - Click by accessibility role (more stable)
    ```json
    {{"action": {{"type": "click_role", "params": {{"role": "button", "name": "Search"}}}}}}
    ```
 
-8. **type_role** - Type into element by accessibility role
+9. **type_role** - Type into element by accessibility role
    ```json
    {{"action": {{"type": "type_role", "params": {{"role": "textbox", "name": "Search", "text": "query", "press_enter": true}}}}}}
    ```
 
-9. **stop** - Complete the task and submit answers
+10. **stop** - Complete the task and submit answers
    ```json
    {{
      "action": {{

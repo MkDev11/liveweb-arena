@@ -508,7 +508,7 @@ The agent MUST report individual percentage changes for verification."""
         Sector analysis: AI visits multiple pages, use ALL for range.
 
         Strategy: ALL - capture data across multiple page visits to
-        account for real-time fluctuations.
+        account for real-time fluctuations. Duplicates will be deduplicated.
         """
         trigger = UrlPatternTrigger(domains=["stooq.com"])
         return (trigger, FetchStrategy.ALL)

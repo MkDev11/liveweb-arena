@@ -20,7 +20,7 @@ class BrowserObservation:
 @dataclass
 class BrowserAction:
     """Action to execute in browser"""
-    action_type: str  # goto|click|type|press|scroll|wait|stop|click_role|type_role
+    action_type: str  # goto|click|type|press|scroll|wait|stop|click_role|type_role|view_more
     params: dict = field(default_factory=dict)
 
 

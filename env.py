@@ -205,9 +205,15 @@ class Actor:
                 triggered = await gt_manager.check_triggers(url)
                 for tag in triggered:
                     state = gt_manager.states.get(tag)
-                    if state and state.ground_truth is not None:
-                        gt_str = str(state.ground_truth)[:60]
-                        log("Actor", f"Triggered GT fetch for {tag}: {gt_str}...")
+                    if state:
+                        # Check for errors in fetch
+                        if state.fetches and state.fetches[-1].error:
+                            log("Actor", f"GT fetch error for {tag}: {state.fetches[-1].error}")
+                        elif state.ground_truth is not None:
+                            gt_str = str(state.ground_truth)[:60]
+                            log("Actor", f"Triggered GT fetch for {tag}: {gt_str}...")
+                        else:
+                            log("Actor", f"GT fetch for {tag} returned None")
 
             agent_loop = AgentLoop(
                 session=session,
@@ -241,6 +247,29 @@ class Actor:
             # Fetch remaining ground truths
             await gt_manager.fetch_remaining()
             ground_truths = gt_manager.get_ground_truths()
+
+            # Log fetch details (deduplicated, with timestamps)
+            fetch_details = gt_manager.get_fetch_details()
+            for tag, fetches in fetch_details.items():
+                errors = [f for f in fetches if f['error']]
+                if errors:
+                    for f in errors:
+                        log("Actor", f"Fetch error [{tag}]: {f['error']}", force=True)
+                elif fetches:
+                    # Deduplicate by value and show unique fetches with time
+                    seen = set()
+                    unique_fetches = []
+                    for f in fetches:
+                        val_key = str(f['value'])
+                        if val_key not in seen:
+                            seen.add(val_key)
+                            unique_fetches.append(f)
+
+                    for f in unique_fetches:
+                        import time
+                        ts = time.strftime("%H:%M:%S", time.localtime(f['timestamp'])) if f['timestamp'] else "?"
+                        val_str = str(f['value'])[:60] if f['value'] else 'None'
+                        log("Actor", f"Fetch [{tag}] @{ts}: {val_str}{'...' if len(str(f['value'] or '')) > 60 else ''}")
 
             # For subtasks without triggers (legacy), fetch now
             for subtask in task.subtasks:

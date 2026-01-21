@@ -230,6 +230,7 @@ class GroundTruthFetch:
     url: str
     value: Any
     error: Optional[str] = None
+    timestamp: Optional[float] = None  # Unix timestamp when fetch occurred
 
 
 @dataclass
@@ -253,7 +254,7 @@ class GroundTruthState:
 
         FIRST: Return first fetch value
         LAST: Return last fetch value
-        ALL: Return list of all values (for range validation)
+        ALL: Return deduplicated list of unique values (for range validation)
         """
         if not self.fetches:
             return None
@@ -266,8 +267,16 @@ class GroundTruthState:
             return valid_fetches[0].value
         elif self.strategy == FetchStrategy.LAST:
             return valid_fetches[-1].value
-        else:  # ALL
-            return [f.value for f in valid_fetches]
+        else:  # ALL - deduplicate by value
+            seen = set()
+            unique_values = []
+            for f in valid_fetches:
+                # Use string representation for deduplication
+                val_key = str(f.value)
+                if val_key not in seen:
+                    seen.add(val_key)
+                    unique_values.append(f.value)
+            return unique_values
 
     @property
     def ground_truth_range(self) -> Optional[tuple]:
@@ -359,6 +368,7 @@ class GroundTruthManager:
             List of subtask tags that were triggered and fetched
         """
         import asyncio
+        import time
 
         triggered = []
 
@@ -370,7 +380,7 @@ class GroundTruthManager:
                 continue
 
             # Fetch ground truth with retry for network errors
-            fetch = GroundTruthFetch(url=url, value=None)
+            fetch = GroundTruthFetch(url=url, value=None, timestamp=time.time())
             last_error = None
 
             for attempt in range(max_retries):
@@ -399,12 +409,13 @@ class GroundTruthManager:
     async def fetch_remaining(self, max_retries: int = 3):
         """Fetch ground truth for any subtasks that were never triggered."""
         import asyncio
+        import time
 
         for tag, state in self.states.items():
             if state.triggered:
                 continue
 
-            fetch = GroundTruthFetch(url="fallback", value=None)
+            fetch = GroundTruthFetch(url="fallback", value=None, timestamp=time.time())
 
             for attempt in range(max_retries):
                 try:
@@ -470,7 +481,12 @@ class GroundTruthManager:
         """Get detailed fetch history for debugging."""
         return {
             tag: [
-                {"url": f.url, "value": f.value, "error": f.error}
+                {
+                    "url": f.url,
+                    "value": f.value,
+                    "error": f.error,
+                    "timestamp": f.timestamp,
+                }
                 for f in state.fetches
             ]
             for tag, state in self.states.items()

@@ -7,7 +7,8 @@ from playwright.async_api import async_playwright, Browser, BrowserContext, Page
 from .models import BrowserObservation, BrowserAction
 
 # Constants
-MAX_ACCESSIBILITY_TREE_LENGTH = 20000
+MAX_CONTENT_LENGTH = 20000  # Max content shown per view
+VIEW_MORE_OVERLAP = 2000    # Overlap between views for context continuity
 PAGE_TIMEOUT_MS = 30000
 NAVIGATION_TIMEOUT_MS = 30000
 
@@ -20,13 +21,24 @@ class BrowserSession:
     In strict isolation mode, the session owns its own browser instance.
     """
 
+    # Step size for view_more = viewport size minus overlap
+    VIEW_STEP = MAX_CONTENT_LENGTH - VIEW_MORE_OVERLAP
+
     def __init__(self, context: BrowserContext, page: Page, browser: Browser = None):
         self._context = context
         self._page = page
         self._browser = browser  # Only set in strict isolation mode
+        # Virtual scroll state for handling truncated content
+        self._view_offset = 0
+        self._last_full_content = ""
+        self._last_url = ""
 
     async def goto(self, url: str, max_retries: int = 3) -> BrowserObservation:
         """Navigate to URL and return observation with automatic retry on failure"""
+        # Reset view offset when navigating to a new page
+        self._view_offset = 0
+        self._last_full_content = ""
+
         for attempt in range(max_retries):
             try:
                 await self._page.goto(url, wait_until="domcontentloaded", timeout=NAVIGATION_TIMEOUT_MS)
@@ -96,6 +108,14 @@ class BrowserSession:
                 delta = amount if direction == "down" else -amount
                 await self._page.mouse.wheel(0, delta)
 
+            elif action_type == "view_more":
+                # Virtual scrolling for truncated content - doesn't scroll the actual page
+                direction = params.get("direction", "down")
+                if direction == "down":
+                    self._view_offset += self.VIEW_STEP
+                else:
+                    self._view_offset = max(0, self._view_offset - self.VIEW_STEP)
+
             elif action_type == "wait":
                 seconds = params.get("seconds", 1)
                 await asyncio.sleep(seconds)
@@ -139,20 +159,42 @@ class BrowserSession:
         """Get current browser observation with retry logic for navigation timing"""
         return await self._get_observation(max_retries)
 
-    async def _get_observation(self, max_retries: int = 3) -> BrowserObservation:
-        """Get current browser observation with retry logic for navigation timing"""
+    async def _get_observation(self, max_retries: int = 5) -> BrowserObservation:
+        """Get current browser observation with retry logic for page loading"""
         for attempt in range(max_retries):
             try:
-                # Wait for page to be in a stable state
-                try:
-                    await self._page.wait_for_load_state("domcontentloaded", timeout=5000)
-                except Exception:
-                    pass  # Page might already be loaded or timeout is acceptable
-
                 url = self._page.url
+
+                # Check for error pages - no need to wait
+                if url.startswith("chrome-error://") or url.startswith("about:neterror"):
+                    return BrowserObservation(
+                        url=url,
+                        title="Error",
+                        accessibility_tree="[Page failed to load - network error]",
+                    )
+
+                # Wait for page to be fully loaded (network idle = no pending requests)
+                page_loaded = False
+                try:
+                    await self._page.wait_for_load_state("networkidle", timeout=10000)
+                    page_loaded = True
+                except Exception:
+                    # Network idle timeout - page might still be loading
+                    # Try domcontentloaded as fallback
+                    try:
+                        await self._page.wait_for_load_state("domcontentloaded", timeout=3000)
+                        page_loaded = True
+                    except Exception:
+                        pass
+
+                # If page not loaded and we have retries left, wait and retry
+                if not page_loaded and attempt < max_retries - 1:
+                    await asyncio.sleep(1.0)
+                    continue
+
                 title = await self._page.title()
 
-                # Get accessibility tree (truncated)
+                # Get accessibility tree
                 a11y_tree = ""
                 try:
                     a11y_snapshot = await self._page.accessibility.snapshot()
@@ -182,18 +224,47 @@ class BrowserSession:
                         pass
 
                 # Combine accessibility tree and page text
-                content = ""
+                full_content = ""
                 if a11y_tree.strip():
-                    content = a11y_tree
+                    full_content = a11y_tree
                 if page_text.strip():
-                    if content:
-                        content += "\n\n--- Page Text Content ---\n" + page_text
+                    if full_content:
+                        full_content += "\n\n--- Page Text Content ---\n" + page_text
                     else:
-                        content = page_text
+                        full_content = page_text
 
-                # Truncate if too long
-                if len(content) > MAX_ACCESSIBILITY_TREE_LENGTH:
-                    content = content[:MAX_ACCESSIBILITY_TREE_LENGTH] + "\n... (truncated)"
+                # Store full content and check if URL changed (reset offset if so)
+                if url != self._last_url:
+                    self._view_offset = 0
+                    self._last_url = url
+                self._last_full_content = full_content
+
+                # Apply virtual scrolling with view window
+                total_len = len(full_content)
+                if total_len > MAX_CONTENT_LENGTH:
+                    # Clamp view offset to valid range
+                    max_offset = max(0, total_len - MAX_CONTENT_LENGTH)
+                    self._view_offset = min(self._view_offset, max_offset)
+
+                    # Extract window of content
+                    start = self._view_offset
+                    end = min(start + MAX_CONTENT_LENGTH, total_len)
+                    content = full_content[start:end]
+
+                    # Add position indicators
+                    position_info = []
+                    if start > 0:
+                        position_info.append(f"... (content above, use view_more direction=up to see)")
+                    if end < total_len:
+                        position_info.append(f"... (content below, use view_more direction=down to see)")
+
+                    if position_info:
+                        content = "\n".join(position_info[:1]) + "\n" + content
+                        if len(position_info) > 1:
+                            content += "\n" + position_info[1]
+                else:
+                    # Content fits in one view - no scrolling needed
+                    content = full_content + "\n\n[Page content complete - no need to scroll]"
 
                 return BrowserObservation(
                     url=url,
