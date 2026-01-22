@@ -63,6 +63,7 @@ class TaskRegistry:
         34: ("coingecko", "coingecko_top_movers"),
         35: ("coingecko", "coingecko_supply"),
         36: ("coingecko", "coingecko_ath"),
+        37: ("coingecko", "coingecko_performance"),
 
         # Add new templates here with new IDs...
     }

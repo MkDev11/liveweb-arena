@@ -7,6 +7,7 @@ from .rank import CoinGeckoRankTemplate
 from .top_movers import CoinGeckoTopMoversTemplate
 from .supply import CoinGeckoSupplyTemplate
 from .ath import CoinGeckoATHTemplate
+from .performance import CoinGeckoPerformanceTemplate
 
 __all__ = [
     "CoinGeckoPriceTemplate",
@@ -16,4 +17,5 @@ __all__ = [
     "CoinGeckoTopMoversTemplate",
     "CoinGeckoSupplyTemplate",
     "CoinGeckoATHTemplate",
+    "CoinGeckoPerformanceTemplate",
 ]
