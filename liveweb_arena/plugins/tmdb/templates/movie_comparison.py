@@ -13,7 +13,9 @@ from .variables import MovieVariable, MovieSpec
 from ..api_client import TMDBClient
 
 
-@register_template("tmdb_movie_comparison")
+# DISABLED: Memorization risk - release order and runtime comparisons of famous movies
+# are often known from training data. Use tmdb_aggregate for comparison queries.
+# @register_template("tmdb_movie_comparison")
 class TMDBMovieComparisonTemplate(QuestionTemplate):
     """
     Template for comparing two movies - HARD DIFFICULTY.

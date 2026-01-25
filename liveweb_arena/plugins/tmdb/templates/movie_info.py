@@ -29,7 +29,10 @@ LANGUAGE_NAMES = {
 }
 
 
-@register_template("tmdb_movie_info")
+# DISABLED: High memorization risk - models can answer basic movie facts
+# (release date, runtime, language, director) from training data without browsing.
+# Use tmdb_cast_position, tmdb_aggregate, or tmdb_recent_works instead.
+# @register_template("tmdb_movie_info")
 class TMDBMovieInfoTemplate(QuestionTemplate):
     """
     Template for movie information queries - EASY DIFFICULTY.

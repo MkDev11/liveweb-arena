@@ -28,6 +28,7 @@ MANIFEST
 venv/
 ENV/
 env/
+cache/
 
 # Environment variables
 .env

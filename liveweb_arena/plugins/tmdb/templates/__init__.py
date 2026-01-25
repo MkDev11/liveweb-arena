@@ -1,25 +1,32 @@
 """TMDB question templates"""
 
-# Original templates (some have static data risk)
+# DISABLED templates (high memorization risk - models answer from training data):
+# - TMDBMovieInfoTemplate: Basic movie facts (release date, runtime, language, director)
+# - TMDBMovieCastTemplate: Lead actors of famous movies are well-known
+# - TMDBMovieComparisonTemplate: Release order and runtime of famous movies
+# These are still importable for backwards compatibility but not registered.
 from .movie_info import TMDBMovieInfoTemplate
 from .movie_cast import TMDBMovieCastTemplate
 from .movie_comparison import TMDBMovieComparisonTemplate
-from .movie_crew import TMDBMovieCrewTemplate
 
-# Dynamic/Anti-memorization templates
+# Active templates with lower memorization risk
+from .movie_crew import TMDBMovieCrewTemplate  # Cinematographers, editors, etc. - less famous
+
+# Anti-memorization templates (recommended for evaluation)
 from .person_filmography import TMDBPersonFilmographyTemplate
 from .movie_collection import TMDBMovieCollectionTemplate
 from .aggregate import TMDBAggregateTemplate
-from .cast_position import TMDBCastPositionTemplate
-from .recent_works import TMDBRecentWorksTemplate
+from .cast_position import TMDBCastPositionTemplate  # "5th billed actor" - hard to memorize
+from .recent_works import TMDBRecentWorksTemplate    # Dynamic data
 
 __all__ = [
-    # Original (use with caution - some static data)
+    # Disabled (importable but not registered)
     "TMDBMovieInfoTemplate",
     "TMDBMovieCastTemplate",
     "TMDBMovieComparisonTemplate",
+    # Active (lower risk)
     "TMDBMovieCrewTemplate",
-    # Dynamic/Anti-memorization (recommended)
+    # Recommended (anti-memorization)
     "TMDBPersonFilmographyTemplate",
     "TMDBMovieCollectionTemplate",
     "TMDBAggregateTemplate",

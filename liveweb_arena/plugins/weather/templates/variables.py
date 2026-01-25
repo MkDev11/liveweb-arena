@@ -51,26 +51,32 @@ class LocationVariable(Variable):
             ("Hong Kong", "China"), ("Shanghai", "China"), ("Delhi", "India"),
             ("Jakarta", "Indonesia"), ("Manila", "Philippines"), ("Osaka", "Japan"),
         ],
+        # Note: Removed cities with common US namesakes (London, Paris, Berlin, Rome,
+        # Amsterdam, Vienna, Warsaw, Zurich) to avoid wttr.in location ambiguity
         "europe": [
-            ("London", "UK"), ("Paris", "France"), ("Berlin", "Germany"),
-            ("Madrid", "Spain"), ("Rome", "Italy"), ("Amsterdam", "Netherlands"),
-            ("Vienna", "Austria"), ("Prague", "Czech Republic"), ("Stockholm", "Sweden"),
-            ("Warsaw", "Poland"), ("Brussels", "Belgium"), ("Zurich", "Switzerland"),
+            ("Madrid", "Spain"), ("Barcelona", "Spain"), ("Lisbon", "Portugal"),
+            ("Prague", "Czech Republic"), ("Stockholm", "Sweden"), ("Copenhagen", "Denmark"),
+            ("Oslo", "Norway"), ("Helsinki", "Finland"), ("Brussels", "Belgium"),
+            ("Athens", "Greece"), ("Budapest", "Hungary"), ("Munich", "Germany"),
         ],
+        # Americas - US cities already unambiguous within US context
         "americas": [
-            ("New York", "USA"), ("Los Angeles", "USA"), ("Chicago", "USA"),
+            ("New York City", "USA"), ("Los Angeles", "USA"), ("Chicago", "USA"),
             ("Toronto", "Canada"), ("Mexico City", "Mexico"), ("Sao Paulo", "Brazil"),
             ("Buenos Aires", "Argentina"), ("Miami", "USA"), ("Seattle", "USA"),
-            ("Vancouver", "Canada"), ("Houston", "USA"), ("Boston", "USA"),
+            ("Vancouver", "Canada"), ("Houston", "USA"), ("San Francisco", "USA"),
         ],
+        # Note: Removed Sydney, Melbourne, Perth (US namesakes exist)
         "oceania": [
-            ("Sydney", "Australia"), ("Melbourne", "Australia"), ("Auckland", "New Zealand"),
-            ("Brisbane", "Australia"), ("Perth", "Australia"), ("Wellington", "New Zealand"),
+            ("Brisbane", "Australia"), ("Auckland", "New Zealand"),
+            ("Wellington", "New Zealand"), ("Adelaide", "Australia"),
+            ("Canberra", "Australia"), ("Gold Coast", "Australia"),
         ],
+        # Note: Removed Cairo (Cairo, IL exists)
         "africa_middle_east": [
-            ("Dubai", "UAE"), ("Cairo", "Egypt"), ("Johannesburg", "South Africa"),
+            ("Dubai", "UAE"), ("Johannesburg", "South Africa"), ("Cape Town", "South Africa"),
             ("Tel Aviv", "Israel"), ("Istanbul", "Turkey"), ("Lagos", "Nigeria"),
-            ("Casablanca", "Morocco"), ("Nairobi", "Kenya"),
+            ("Casablanca", "Morocco"), ("Nairobi", "Kenya"), ("Doha", "Qatar"),
         ],
     }
 

@@ -13,7 +13,9 @@ from .variables import MovieVariable, CastPositionVariable, MovieSpec
 from ..api_client import TMDBClient
 
 
-@register_template("tmdb_movie_cast")
+# DISABLED: High memorization risk - lead actors of famous movies are well-known.
+# Use tmdb_cast_position instead (e.g., "Who is the 5th billed actor?").
+# @register_template("tmdb_movie_cast")
 class TMDBMovieCastTemplate(QuestionTemplate):
     """
     Template for movie cast queries - MEDIUM DIFFICULTY.
