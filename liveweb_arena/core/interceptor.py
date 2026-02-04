@@ -370,3 +370,15 @@ class CacheInterceptor:
     def reset_stats(self):
         """Reset statistics."""
         self.stats = InterceptorStats()
+
+    def cleanup(self):
+        """
+        Release memory by clearing internal caches.
+
+        Call this when the evaluation is complete to prevent memory leaks.
+        The interceptor should not be used after calling this method.
+        """
+        self._url_map.clear()
+        self._accessibility_trees.clear()
+        self.cached_pages.clear()
+        self.stats = InterceptorStats()

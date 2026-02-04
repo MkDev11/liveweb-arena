@@ -94,6 +94,28 @@ class CoinGeckoPlugin(BasePlugin):
         # Homepage patterns: "", "en", "en/"
         return path in ('', 'en')
 
+    def needs_api_data(self, url: str) -> bool:
+        """
+        Determine if this URL needs API data for ground truth.
+
+        Only homepage and coin detail pages can provide API data.
+        Other pages (charts, portfolios, etc.) are navigation-only.
+
+        Args:
+            url: Page URL
+
+        Returns:
+            True if API data is needed and available, False otherwise
+        """
+        # Coin detail page needs API data
+        if self._extract_coin_id(url):
+            return True
+        # Homepage needs API data
+        if self._is_homepage(url):
+            return True
+        # Other pages (charts, global-charts, categories, etc.) don't need API data
+        return False
+
     def _extract_coin_id(self, url: str) -> str:
         """
         Extract coin ID from CoinGecko URL.

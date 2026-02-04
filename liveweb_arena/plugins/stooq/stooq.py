@@ -72,6 +72,28 @@ class StooqPlugin(BasePlugin):
         # Homepage has no path or just "/"
         return path == '' and not parsed.query
 
+    def needs_api_data(self, url: str) -> bool:
+        """
+        Determine if this URL needs API data for ground truth.
+
+        Only homepage and asset detail pages can provide API data.
+        Other pages (q/d/, q/a/, etc.) are navigation-only.
+
+        Args:
+            url: Page URL
+
+        Returns:
+            True if API data is needed and available, False otherwise
+        """
+        # Asset detail page needs API data
+        if self._extract_symbol(url):
+            return True
+        # Homepage needs API data
+        if self._is_homepage(url):
+            return True
+        # Other pages don't need API data
+        return False
+
     def _extract_symbol(self, url: str) -> str:
         """
         Extract symbol from Stooq URL.

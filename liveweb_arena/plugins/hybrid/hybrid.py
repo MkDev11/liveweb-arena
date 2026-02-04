@@ -36,6 +36,32 @@ class HybridPlugin(BasePlugin):
             "*/q/d/l/*",
         ]
 
+    def needs_api_data(self, url: str) -> bool:
+        """
+        Determine if this URL needs API data for ground truth.
+
+        Delegates to the appropriate plugin based on URL domain.
+
+        Args:
+            url: Page URL
+
+        Returns:
+            True if the underlying plugin can provide API data
+        """
+        url_lower = url.lower()
+
+        if "coingecko.com" in url_lower:
+            from liveweb_arena.plugins.coingecko.coingecko import CoinGeckoPlugin
+            plugin = CoinGeckoPlugin()
+            return plugin.needs_api_data(url)
+
+        elif "stooq.com" in url_lower:
+            from liveweb_arena.plugins.stooq.stooq import StooqPlugin
+            plugin = StooqPlugin()
+            return plugin.needs_api_data(url)
+
+        return False
+
     async def fetch_api_data(self, url: str) -> Dict[str, Any]:
         """
         Fetch API data for a hybrid page.
