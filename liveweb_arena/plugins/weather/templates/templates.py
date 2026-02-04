@@ -299,7 +299,11 @@ class LocationNameWeatherTemplate(QuestionTemplate):
         # Handle "now" queries - use current_condition
         if target_date == "now":
             current = data.get("current_condition", [{}])[0]
-            value = current.get(api_field)
+            # wttr.in uses different field names for current_condition vs hourly:
+            # current_condition: temp_C (with underscore), hourly: tempC (no underscore)
+            current_field_map = {"tempC": "temp_C"}
+            actual_field = current_field_map.get(api_field, api_field)
+            value = current.get(actual_field)
 
             if is_boolean and value is not None:
                 return GroundTruthResult.ok("Yes" if float(value) > 30 else "No")
@@ -336,7 +340,10 @@ class LocationNameWeatherTemplate(QuestionTemplate):
                     value = max(chances)
         elif is_today:
             current = data.get("current_condition", [{}])[0]
-            value = current.get(api_field)
+            # Map field names for current_condition (tempC -> temp_C)
+            current_field_map = {"tempC": "temp_C"}
+            actual_field = current_field_map.get(api_field, api_field)
+            value = current.get(actual_field)
             if value is None:
                 value = day_data.get(api_field)
         else:
@@ -628,7 +635,14 @@ class CurrentWeatherTemplate(QuestionTemplate):
             )
 
         current = data.get("current_condition", [{}])[0]
-        value = current.get(api_field)
+        # wttr.in uses different field names for current_condition vs hourly:
+        # current_condition: temp_C, FeelsLikeC (with underscore for temp)
+        # hourly: tempC, FeelsLikeC (no underscore for temp)
+        current_field_map = {
+            "tempC": "temp_C",  # Map hourly field name to current_condition field name
+        }
+        actual_field = current_field_map.get(api_field, api_field)
+        value = current.get(actual_field)
 
         if value is None:
             return GroundTruthResult.fail(f"Field {api_field} not in current conditions")
