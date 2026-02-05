@@ -110,9 +110,9 @@ Your reasoning about what to do next...
 
 ## IMPORTANT
 
-- Output ONLY a single JSON object
-- Do NOT include markdown code blocks
-- Do NOT include any text before or after the JSON
+- Your response format: <think>reasoning</think> followed by a JSON object
+- Do NOT use markdown code blocks around the JSON
+- The JSON must have nested structure: {{"action": {{"type": "...", "params": {{...}}}}}}
 """
 
 # Step prompt template
@@ -238,25 +238,17 @@ class AgentPolicy:
         if parsed is None:
             return None
 
-        # Extract action
-        action_data = parsed.get("action", {})
-
-        if not action_data:
+        # Extract action - strict format only
+        # Required: {"action": {"type": "...", "params": {...}}}
+        action_data = parsed.get("action")
+        if not isinstance(action_data, dict):
             return None
 
-        action_type = action_data.get("type", "")
-        params = action_data.get("params", {})
+        action_type = action_data.get("type")
+        if not isinstance(action_type, str) or action_type not in VALID_ACTION_TYPES:
+            return None
 
-        # Validate action type
-        if action_type not in VALID_ACTION_TYPES:
-            # Try to recover - maybe they used a similar name
-            action_type_lower = action_type.lower()
-            for valid_type in VALID_ACTION_TYPES:
-                if valid_type in action_type_lower or action_type_lower in valid_type:
-                    action_type = valid_type
-                    break
-            else:
-                return None
+        params = action_data.get("params", {})
 
         return BrowserAction(action_type=action_type, params=params)
 
