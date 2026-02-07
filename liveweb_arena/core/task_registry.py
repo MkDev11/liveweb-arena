@@ -79,10 +79,10 @@ class TaskRegistry:
         51: ("hybrid", "hybrid_ranking"),
         52: ("hybrid", "hybrid_conditional_branch"),
         53: ("hybrid", "hybrid_portfolio_rebalance"),
-        54: ("hybrid", "hybrid_threshold_alert"),
-        55: ("hybrid", "hybrid_arbitrage_finder"),
+        # 54, 55, 57: removed (templates deleted)
         56: ("hybrid", "hybrid_anomaly_detection"),
-        57: ("hybrid", "hybrid_time_series_pattern"),
+        58: ("hybrid", "hybrid_chained_decision"),
+        59: ("hybrid", "hybrid_cross_domain_calc"),
 
         # Add new templates here with new IDs...
     }

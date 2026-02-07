@@ -91,6 +91,10 @@ class RewardConfig:
     max_step_reward: float = 0.4  # Was 0.5
     min_step_reward: float = -0.15  # Was -0.2
 
+    # Cumulative step reward cap (prevents gaming via domain farming etc.)
+    # Step rewards should not exceed terminal success reward
+    max_cumulative_step_reward: float = 1.5  # Less than success_reward (2.0)
+
 
 @dataclass
 class RewardBreakdown:
@@ -156,6 +160,7 @@ class StepwiseRewardCalculator:
         self._collected_targets: Set[str] = set()
         self._confirmed_assets: Set[str] = set()  # Assets confirmed via detail page
         self._all_targets_collected: bool = False
+        self._cumulative_step_reward: float = 0.0  # Track total step rewards
 
     def calculate_step_reward(
         self,
@@ -251,7 +256,9 @@ class StepwiseRewardCalculator:
                     )
 
                     # 8. All targets collected bonus
-                    if (self._collected_targets >= self.target_assets and
+                    # Only give bonus if target_assets is non-empty to prevent gaming
+                    if (self.target_assets and
+                        self._collected_targets >= self.target_assets and
                         not self._all_targets_collected):
                         self._all_targets_collected = True
                         breakdown.add(
@@ -262,13 +269,14 @@ class StepwiseRewardCalculator:
 
         # 9. Detail page visit reward (even if asset already collected from homepage)
         # This encourages visiting detail pages for more accurate GT data
-        if is_detail_page(url) and url != "about:blank":
+        # Only give reward if target_assets is defined to prevent gaming
+        if is_detail_page(url) and url != "about:blank" and self.target_assets:
             # Extract asset ID from URL and check if it's a target
             asset_id = self._extract_asset_from_url(url)
             if asset_id and asset_id not in self._confirmed_assets:
                 self._confirmed_assets.add(asset_id)
-                # Give reward if this is a target asset being confirmed
-                if asset_id in self.target_assets or not self.target_assets:
+                # Give reward only if this is a target asset being confirmed
+                if asset_id in self.target_assets:
                     breakdown.add(
                         RewardSignal.DETAIL_PAGE_VISIT,
                         self.config.detail_page_reward,
@@ -285,6 +293,18 @@ class StepwiseRewardCalculator:
             )
 
         breakdown.clamp(self.config.min_step_reward, self.config.max_step_reward)
+
+        # 11. Apply cumulative step reward cap to prevent gaming
+        if breakdown.total > 0:
+            remaining_budget = self.config.max_cumulative_step_reward - self._cumulative_step_reward
+            if remaining_budget <= 0:
+                # Cap reached, zero out positive rewards
+                breakdown.total = min(breakdown.total, 0)
+            elif breakdown.total > remaining_budget:
+                # Partial cap
+                breakdown.total = remaining_budget
+            self._cumulative_step_reward += max(0, breakdown.total)
+
         return breakdown
 
     def calculate_terminal_reward(
@@ -348,6 +368,7 @@ class StepwiseRewardCalculator:
         self._collected_targets.clear()
         self._confirmed_assets.clear()
         self._all_targets_collected = False
+        self._cumulative_step_reward = 0.0
 
     def get_state(self) -> Dict[str, Any]:
         """Get current state for debugging/logging."""
@@ -358,6 +379,7 @@ class StepwiseRewardCalculator:
             "collected_targets": len(self._collected_targets),
             "confirmed_assets": len(self._confirmed_assets),
             "all_targets_collected": self._all_targets_collected,
+            "cumulative_step_reward": self._cumulative_step_reward,
         }
 
     def _normalize_url(self, url: str) -> str:
