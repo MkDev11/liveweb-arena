@@ -7,14 +7,12 @@ RL-friendly template design:
 - Low memorization risk due to dynamic data and combinatorial question space
 """
 
-from .external_page_title import HackerNewsExternalPageTitleTemplate
 from .multi_condition_filter import HackerNewsMultiConditionFilterTemplate
 from .extrema_comparison import HackerNewsExtremaComparisonTemplate
 from .category_comparison import HackerNewsCategoryComparisonTemplate
 from .news_summary import HackerNewsNewsSummaryTemplate
 
 __all__ = [
-    "HackerNewsExternalPageTitleTemplate",
     "HackerNewsMultiConditionFilterTemplate",
     "HackerNewsExtremaComparisonTemplate",
     "HackerNewsCategoryComparisonTemplate",

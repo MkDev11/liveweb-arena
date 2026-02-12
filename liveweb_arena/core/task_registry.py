@@ -107,8 +107,6 @@ class TaskRegistry:
         60: ("hybrid", "hybrid_satisficing_search"),
 
         # Hacker News templates (IDs 70+ to preserve existing task_id mappings)
-        # 70-73: removed (SFT-friendly templates with low RL value)
-        74: ("hackernews", "hackernews_external_page_title"),
         75: ("hackernews", "hackernews_multi_condition_filter"),
         76: ("hackernews", "hackernews_extrema_comparison"),
         77: ("hackernews", "hackernews_category_comparison"),
@@ -134,7 +132,7 @@ class TaskRegistry:
         # Version 1: Original templates (frozen - DO NOT MODIFY)
         [1, 2, 3, 4, 5, 6, 10, 11, 12, 13, 15, 16, 17, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 50, 51, 52, 53, 56, 58, 59, 60],
         # Version 2: Hacker News templates
-        [74, 75, 76, 77, 78],
+        [75, 76, 77, 78],
         # Add new versions here...
     ]
 
