@@ -60,11 +60,11 @@ def _parse_subnet_data(subnet: Dict[str, Any]) -> Dict[str, Any]:
         "tao_in": subnet_tao,
         "alpha_in": alpha_in,
         "market_cap": market_cap,
-        # Price changes not available in this API
-        "price_change_1h": 0.0,
-        "price_change_24h": 0.0,
-        "price_change_1w": 0.0,
-        "price_change_1m": 0.0,
+        # Price changes from dtao snapshot
+        "price_change_1h": float(dtao.get("price_diff_hour", 0) or 0),
+        "price_change_24h": float(dtao.get("price_diff_day", 0) or 0),
+        "price_change_1w": float(dtao.get("price_diff_week", 0) or 0),
+        "price_change_1m": float(dtao.get("price_diff_month", 0) or 0),
         # Volume and liquidity
         "volume_24h": volume,
         "liquidity": liquidity,
