@@ -81,6 +81,7 @@ class OpenLibraryClient(BaseAPIClient):
         query: str,
         limit: int = 20,
         sort: Optional[str] = None,
+        mode: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Search for works.
@@ -89,6 +90,7 @@ class OpenLibraryClient(BaseAPIClient):
             query: Search query string
             limit: Maximum results
             sort: Sort order (e.g., "rating", "editions", "new")
+            mode: Search mode (e.g., "everything") to match HTML page behavior
 
         Returns:
             List of work dicts with stats fields
@@ -100,6 +102,8 @@ class OpenLibraryClient(BaseAPIClient):
         }
         if sort:
             params["sort"] = sort
+        if mode:
+            params["mode"] = mode
 
         data = await cls.get("/search.json", params=params)
         if data and isinstance(data, dict):
@@ -214,6 +218,7 @@ async def fetch_subject_api_data(subject: str, limit: int = 20) -> Dict[str, Any
 
 async def fetch_search_api_data(
     query: str, limit: int = 20, sort: Optional[str] = None,
+    mode: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Fetch API data for a search results page.
@@ -237,7 +242,7 @@ async def fetch_search_api_data(
         }
     }
     """
-    docs = await OpenLibraryClient.search_works(query, limit=limit, sort=sort)
+    docs = await OpenLibraryClient.search_works(query, limit=limit, sort=sort, mode=mode)
     if not docs:
         raise APIFetchError(f"Search returned no results for '{query}'", source="openlibrary")
 
