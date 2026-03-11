@@ -404,6 +404,23 @@ class GTCollector:
                 self._collected_api_data[f"user:{username}"] = api_data
                 return f"user[{username}]"
 
+        elif "openlibrary.org" in url_lower:
+            if "works" in api_data and isinstance(api_data["works"], dict):
+                # Search or subject page: store under URL key
+                # Templates iterate collected data looking for "works" dict
+                url_key = f"ol:{url_lower}"
+                self._collected_api_data[url_key] = api_data
+                count = len(api_data["works"])
+                subject = api_data.get("subject")
+                if subject:
+                    return f"+{count} works (subject: {subject})"
+                return f"+{count} works (search)"
+            elif "key" in api_data and "title" in api_data:
+                # Work detail page
+                work_key = api_data["key"]
+                self._collected_api_data[f"ol:{work_key}"] = api_data
+                return f"work[{api_data['title'][:30]}]"
+
         # Handle external pages (from HN story links)
         if api_data.get("is_external"):
             external_url = api_data.get("url", url)
