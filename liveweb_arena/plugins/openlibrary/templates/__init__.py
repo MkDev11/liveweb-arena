@@ -12,6 +12,7 @@ from .author_editions import OpenLibraryAuthorEditionsTemplate
 from .subject_multi_condition import OpenLibrarySubjectMultiConditionTemplate
 from .author_engagement_extrema import OpenLibraryAuthorEngagementExtremaTemplate
 from .author_comparison import OpenLibraryAuthorComparisonTemplate
+from .reading_stats_filter import OpenLibraryReadingStatsFilterTemplate
 
 __all__ = [
     "OpenLibraryBookStatsTemplate",
@@ -20,4 +21,5 @@ __all__ = [
     "OpenLibrarySubjectMultiConditionTemplate",
     "OpenLibraryAuthorEngagementExtremaTemplate",
     "OpenLibraryAuthorComparisonTemplate",
+    "OpenLibraryReadingStatsFilterTemplate",
 ]

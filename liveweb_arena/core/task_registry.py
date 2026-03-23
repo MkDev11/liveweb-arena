@@ -157,6 +157,7 @@ class TaskRegistry:
         # Open Library templates — engagement & comparison
         96: ("openlibrary", "openlibrary_author_engagement_extrema"),
         97: ("openlibrary", "openlibrary_author_comparison"),
+        98: ("openlibrary", "openlibrary_reading_stats_filter"),
     }
 
     # Template versions - each version's combinations come AFTER all previous versions
@@ -186,7 +187,7 @@ class TaskRegistry:
         # Version 6: ArXiv templates
         [90, 91, 92, 94, 95],
         # Version 7: Open Library engagement & comparison templates
-        [96, 97],
+        [96, 97, 98],
     ]
 
     # Combination registry: list of template ID tuples
