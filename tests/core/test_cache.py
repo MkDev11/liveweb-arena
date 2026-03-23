@@ -1,8 +1,10 @@
 """Tests for cache module — CachedPage, normalize_url, url_to_cache_dir, CacheManager helpers."""
 
+import asyncio
 import json
 import time
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -246,3 +248,121 @@ class TestCacheManagerLoadIfValid:
         mgr = CacheManager(cache_dir=tmp_path, ttl=3600)
         # need_api=True but cache has no api_data → rejected
         assert mgr._load_if_valid(cache_file, need_api=True) is None
+
+
+# ── _fetch_page_with_retry ──────────────────────────────────────────
+
+
+class TestFetchPageWithRetry:
+    """Tests for CacheManager._fetch_page_with_retry."""
+
+    def _make_manager(self, tmp_path):
+        mgr = CacheManager(cache_dir=tmp_path, ttl=3600)
+        mgr._PAGE_RETRY_DELAY = 0  # no waiting in tests
+        return mgr
+
+    def test_succeeds_on_first_attempt(self, tmp_path):
+        mgr = self._make_manager(tmp_path)
+        mgr._fetch_page = AsyncMock(return_value=("<html>ok</html>", "tree"))
+        html, tree = asyncio.run(mgr._fetch_page_with_retry("https://x.com"))
+        assert html == "<html>ok</html>"
+        assert mgr._fetch_page.call_count == 1
+
+    def test_retries_on_transient_error(self, tmp_path):
+        mgr = self._make_manager(tmp_path)
+        mgr._fetch_page = AsyncMock(side_effect=[
+            TimeoutError("page.goto timed out"),
+            ("<html>ok</html>", "tree"),
+        ])
+        html, tree = asyncio.run(mgr._fetch_page_with_retry("https://x.com"))
+        assert html == "<html>ok</html>"
+        assert mgr._fetch_page.call_count == 2
+
+    def test_retries_on_http_5xx(self, tmp_path):
+        mgr = self._make_manager(tmp_path)
+        mgr._fetch_page = AsyncMock(side_effect=[
+            CacheFatalError("HTTP 503 for https://arxiv.org/list/cs.AI/new"),
+            ("<html>ok</html>", "tree"),
+        ])
+        html, _ = asyncio.run(mgr._fetch_page_with_retry("https://arxiv.org/list/cs.AI/new"))
+        assert html == "<html>ok</html>"
+        assert mgr._fetch_page.call_count == 2
+
+    def test_does_not_retry_http_4xx(self, tmp_path):
+        mgr = self._make_manager(tmp_path)
+        mgr._fetch_page = AsyncMock(
+            side_effect=CacheFatalError("HTTP 404 for https://x.com"),
+        )
+        with pytest.raises(CacheFatalError, match="HTTP 404"):
+            asyncio.run(mgr._fetch_page_with_retry("https://x.com"))
+        assert mgr._fetch_page.call_count == 1
+
+    def test_does_not_retry_captcha(self, tmp_path):
+        mgr = self._make_manager(tmp_path)
+        mgr._fetch_page = AsyncMock(
+            side_effect=CacheFatalError("CAPTCHA/challenge page detected"),
+        )
+        with pytest.raises(CacheFatalError, match="CAPTCHA"):
+            asyncio.run(mgr._fetch_page_with_retry("https://x.com"))
+        assert mgr._fetch_page.call_count == 1
+
+    def test_raises_after_all_retries_exhausted(self, tmp_path):
+        mgr = self._make_manager(tmp_path)
+        mgr._fetch_page = AsyncMock(
+            side_effect=TimeoutError("page.goto timed out"),
+        )
+        with pytest.raises(CacheFatalError, match="Page fetch failed"):
+            asyncio.run(mgr._fetch_page_with_retry("https://x.com"))
+        assert mgr._fetch_page.call_count == mgr._MAX_PAGE_RETRIES
+
+
+# ── _ensure_single with extract_api_data_from_html ──────────────────
+
+
+class TestEnsureSingleHtmlExtraction:
+    """Tests that _ensure_single uses extract_api_data_from_html when available."""
+
+    def _make_manager(self, tmp_path):
+        mgr = CacheManager(cache_dir=tmp_path, ttl=3600)
+        mgr._PAGE_RETRY_DELAY = 0
+        return mgr
+
+    @staticmethod
+    def _make_plugin(extract_return, fetch_return=None):
+        """Build a plugin mock with correct sync/async method types."""
+        plugin = MagicMock()
+        # Sync methods
+        plugin.extract_api_data_from_html.return_value = extract_return
+        plugin.normalize_url.side_effect = normalize_url
+        plugin.get_blocked_patterns.return_value = []
+        # Async methods
+        plugin.fetch_api_data = AsyncMock(return_value=fetch_return)
+        plugin.setup_page_for_cache = AsyncMock()
+        return plugin
+
+    def test_skips_fetch_api_data_when_html_extraction_works(self, tmp_path):
+        mgr = self._make_manager(tmp_path)
+        mgr._fetch_page = AsyncMock(return_value=("<html>papers</html>", "tree"))
+        plugin = self._make_plugin(
+            extract_return={"papers": {"1": {"rank": 1}}},
+        )
+
+        cached = asyncio.run(mgr._ensure_single(
+            "https://arxiv.org/list/cs.AI/new", plugin, need_api=True,
+        ))
+        assert cached.api_data == {"papers": {"1": {"rank": 1}}}
+        plugin.fetch_api_data.assert_not_called()
+
+    def test_falls_back_to_fetch_api_data_when_html_extraction_returns_none(self, tmp_path):
+        mgr = self._make_manager(tmp_path)
+        mgr._fetch_page = AsyncMock(return_value=("<html>page</html>", "tree"))
+        plugin = self._make_plugin(
+            extract_return=None,
+            fetch_return={"coins": {"btc": {"price": 50000}}},
+        )
+
+        cached = asyncio.run(mgr._ensure_single(
+            "https://www.coingecko.com/en/coins/bitcoin", plugin, need_api=True,
+        ))
+        assert cached.api_data == {"coins": {"btc": {"price": 50000}}}
+        plugin.fetch_api_data.assert_called_once()
