@@ -1,5 +1,6 @@
 """Shared helpers for Open Library templates."""
 
+import re
 from typing import Any, Dict, Iterator, Optional
 
 from liveweb_arena.core.gt_collector import get_current_gt_collector
@@ -100,3 +101,73 @@ def iter_collected_works(collected: Dict[str, Dict[str, Any]]) -> Iterator[Dict[
 
         if "key" in entry and "title" in entry:
             yield entry
+
+
+def normalize_author_fragment(value: str) -> str:
+    """Normalize author text by stripping punctuation and collapsing whitespace."""
+    return " ".join(re.findall(r"[a-z0-9]+", value.lower()))
+
+
+def extract_author_filter(query: str) -> Optional[str]:
+    """
+    Extract normalized author text from author-filter queries.
+
+    Accepts query forms like:
+    - author:"mark twain"
+    - AUTHOR: "Mark Twain"
+    - author:'h.g. wells'
+
+    Returns None if the query is not an author-filter query.
+    """
+    cleaned = query.strip().lower()
+    if not cleaned:
+        return None
+
+    match = re.match(r"^author\s*:\s*(.+)$", cleaned)
+    if not match:
+        return None
+
+    rhs = match.group(1).strip()
+    if len(rhs) >= 2 and rhs[0] == rhs[-1] and rhs[0] in {'"', "'"}:
+        rhs = rhs[1:-1].strip()
+
+    normalized = normalize_author_fragment(rhs)
+    return normalized or None
+
+
+def find_author_search_entry(
+    collected: Dict[str, Dict[str, Any]],
+    *,
+    search_query: str,
+    sort: str,
+) -> Optional[Dict[str, Any]]:
+    """
+    Find search data for an author-filtered search query.
+
+    Requires author-filter syntax (``author:"name"``) to keep page semantics
+    aligned with the question ("books by <author>").
+    """
+    target_author = extract_author_filter(search_query)
+    if not target_author:
+        return None
+
+    matched_entry: Optional[Dict[str, Any]] = None
+
+    for key, entry in collected.items():
+        if not key.startswith("ol:") or not isinstance(entry, dict):
+            continue
+        works = entry.get("works")
+        if not isinstance(works, dict):
+            continue
+        if entry.get("sort") != sort:
+            continue
+
+        entry_query = str(entry.get("query", ""))
+        if not entry_query.strip():
+            continue
+
+        entry_author = extract_author_filter(entry_query)
+        if entry_author == target_author:
+            matched_entry = entry
+
+    return matched_entry

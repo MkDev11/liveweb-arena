@@ -1,7 +1,6 @@
 """Author editions aggregation template for Open Library - MEDIUM DIFFICULTY."""
 
 import random
-import re
 from typing import Any, Dict, Optional
 from urllib.parse import quote_plus
 
@@ -17,7 +16,7 @@ from liveweb_arena.core.validators.base import (
     ValidationResult,
     register_template,
 )
-from .common import get_collected_data, parse_numeric
+from .common import find_author_search_entry, get_collected_data, parse_numeric
 
 AUTHOR_POOL = [
     # --- Original pool (20) ---
@@ -193,7 +192,7 @@ class OpenLibraryAuthorEditionsTemplate(QuestionTemplate):
         if not search_query:
             search_query = f'author:"{author_query}"'
 
-        data = self._find_author_search_entry(
+        data = find_author_search_entry(
             collected, search_query=search_query, sort=sort,
         )
         if data is None:
@@ -229,75 +228,6 @@ class OpenLibraryAuthorEditionsTemplate(QuestionTemplate):
             total_editions += int(edition_count)
 
         return GroundTruthResult.ok(str(total_editions))
-
-    @staticmethod
-    def _normalize_author_fragment(value: str) -> str:
-        """Normalize author text by stripping punctuation and collapsing whitespace."""
-        return " ".join(re.findall(r"[a-z0-9]+", value.lower()))
-
-    @classmethod
-    def _extract_author_filter(cls, query: str) -> Optional[str]:
-        """
-        Extract normalized author text from author-filter queries.
-
-        Accepts query forms like:
-        - author:"mark twain"
-        - AUTHOR: "Mark Twain"
-        - author:'h.g. wells'
-        """
-        cleaned = query.strip().lower()
-        if not cleaned:
-            return None
-
-        match = re.match(r"^author\s*:\s*(.+)$", cleaned)
-        if not match:
-            return None
-
-        rhs = match.group(1).strip()
-        if len(rhs) >= 2 and rhs[0] == rhs[-1] and rhs[0] in {'"', "'"}:
-            rhs = rhs[1:-1].strip()
-
-        normalized = cls._normalize_author_fragment(rhs)
-        return normalized or None
-
-    @classmethod
-    def _find_author_search_entry(
-        cls,
-        collected: Dict[str, Dict[str, Any]],
-        *,
-        search_query: str,
-        sort: str,
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Find search data for an author-filtered search query.
-
-        We intentionally require author-filter syntax to keep page semantics
-        aligned with the question ("books by <author>").
-        """
-        target_author = cls._extract_author_filter(search_query)
-        if not target_author:
-            return None
-
-        matched_entry: Optional[Dict[str, Any]] = None
-
-        for key, entry in collected.items():
-            if not key.startswith("ol:") or not isinstance(entry, dict):
-                continue
-            works = entry.get("works")
-            if not isinstance(works, dict):
-                continue
-            if entry.get("sort") != sort:
-                continue
-
-            entry_query = str(entry.get("query", ""))
-            if not entry_query.strip():
-                continue
-
-            entry_author = cls._extract_author_filter(entry_query)
-            if entry_author == target_author:
-                matched_entry = entry
-
-        return matched_entry
 
     async def validate_answer(
         self,
