@@ -140,6 +140,7 @@ def find_author_search_entry(
     *,
     search_query: str,
     sort: str,
+    allow_unsorted_fallback: bool = False,
 ) -> Optional[Dict[str, Any]]:
     """
     Find search data for an author-filtered search query.
@@ -149,20 +150,25 @@ def find_author_search_entry(
     ``agatha christie`` instead.  To handle both cases the collected entry's
     query is first checked for ``author:`` syntax; if that is absent the
     raw query text is normalized and compared directly.
+
+    By default, this matcher is strict about sort order. When
+    ``allow_unsorted_fallback=True``, it first prefers an exact sort match and
+    only falls back to entries with no sort parameter when no exact match was
+    collected.
     """
     target_author = extract_author_filter(search_query)
     if not target_author:
         return None
 
-    matched_entry: Optional[Dict[str, Any]] = None
+    requested_sort = sort.strip()
+    matched_exact: Optional[Dict[str, Any]] = None
+    matched_unsorted: Optional[Dict[str, Any]] = None
 
     for key, entry in collected.items():
         if not key.startswith("ol:") or not isinstance(entry, dict):
             continue
         works = entry.get("works")
         if not isinstance(works, dict):
-            continue
-        if entry.get("sort") != sort:
             continue
 
         entry_query = str(entry.get("query", ""))
@@ -172,7 +178,17 @@ def find_author_search_entry(
         entry_author = extract_author_filter(entry_query)
         if entry_author is None:
             entry_author = normalize_author_fragment(entry_query)
-        if entry_author == target_author:
-            matched_entry = entry
+        if entry_author != target_author:
+            continue
 
-    return matched_entry
+        sort_value = entry.get("sort")
+        entry_sort = str(sort_value).strip() if sort_value is not None else ""
+
+        if entry_sort == requested_sort:
+            matched_exact = entry
+            continue
+
+        if allow_unsorted_fallback and not entry_sort:
+            matched_unsorted = entry
+
+    return matched_exact if matched_exact is not None else matched_unsorted

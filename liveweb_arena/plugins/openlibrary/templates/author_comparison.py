@@ -200,7 +200,10 @@ class OpenLibraryAuthorComparisonTemplate(QuestionTemplate):
         Returns the integer sum on success, or a GroundTruthResult on failure.
         """
         data = find_author_search_entry(
-            collected, search_query=search_query, sort=sort,
+            collected,
+            search_query=search_query,
+            sort=sort,
+            allow_unsorted_fallback=True,
         )
         if data is None:
             ol_keys = [k for k in collected if k.startswith("ol:")][:5]

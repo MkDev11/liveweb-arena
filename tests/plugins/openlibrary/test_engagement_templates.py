@@ -182,6 +182,25 @@ def test_extrema_finds_lowest_already_read():
     assert result.value == "Sense and Sensibility"
 
 
+def test_extrema_matches_unsorted_query_when_sort_not_collected():
+    tmpl = OpenLibraryAuthorEngagementExtremaTemplate()
+    collected = {
+        "ol:search:austen": _make_search_entry("jane austen", None, [
+            {"key": "/works/OL1W", "rank": 1, "title": "Sense and Sensibility", "already_read_count": 50},
+            {"key": "/works/OL2W", "rank": 2, "title": "Pride and Prejudice", "already_read_count": 500},
+            {"key": "/works/OL3W", "rank": 3, "title": "Emma", "already_read_count": 200},
+        ]),
+    }
+    result = _run_gt(collected, tmpl.get_ground_truth({
+        "author_name": "Jane Austen", "author_query": "jane austen",
+        "search_query": 'author:"jane austen"', "sort": "editions",
+        "work_count": 3, "extrema": "lowest", "metric": "already_read_count",
+        "metric_label": "already-read count",
+    }))
+    assert result.success is True
+    assert result.value == "Sense and Sensibility"
+
+
 def test_extrema_tie_breaks_alphabetically():
     tmpl = OpenLibraryAuthorEngagementExtremaTemplate()
     collected = {
@@ -324,6 +343,32 @@ def test_comparison_tie_breaks_alphabetically():
     assert result.value == "Agatha Christie"  # alphabetically earlier
 
 
+def test_comparison_matches_unsorted_queries_when_sort_not_collected():
+    tmpl = OpenLibraryAuthorComparisonTemplate()
+    collected = {
+        "ol:search:king": _make_search_entry("stephen king", None, [
+            {"key": "/works/OL1W", "rank": 1, "title": "It", "ratings_count": 500},
+            {"key": "/works/OL2W", "rank": 2, "title": "Carrie", "ratings_count": 200},
+        ]),
+        "ol:search:christie": _make_search_entry("agatha christie", None, [
+            {"key": "/works/OL3W", "rank": 1, "title": "Styles", "ratings_count": 100},
+            {"key": "/works/OL4W", "rank": 2, "title": "Adversary", "ratings_count": 50},
+        ]),
+    }
+    result = _run_gt(collected, tmpl.get_ground_truth({
+        "author_a_name": "Stephen King",
+        "author_a_query": "stephen king",
+        "search_query_a": 'author:"stephen king"',
+        "author_b_name": "Agatha Christie",
+        "author_b_query": "agatha christie",
+        "search_query_b": 'author:"agatha christie"',
+        "sort": "editions", "work_count": 2, "metric": "ratings_count",
+        "metric_label": "total number of ratings",
+    }))
+    assert result.success is True
+    assert result.value == "Stephen King"
+
+
 def test_comparison_not_collected_missing_author():
     tmpl = OpenLibraryAuthorComparisonTemplate()
     collected = {
@@ -441,6 +486,27 @@ def test_filter_exact_threshold_not_counted():
     assert result.value == "1"  # only 101 > 100, not 100 > 100
 
 
+def test_filter_matches_unsorted_query_when_sort_not_collected():
+    tmpl = OpenLibraryReadingStatsFilterTemplate()
+    collected = {
+        "ol:search:king": _make_search_entry("stephen king", None, [
+            {"key": "/works/OL1W", "rank": 1, "title": "It", "want_to_read_count": 10000},
+            {"key": "/works/OL2W", "rank": 2, "title": "Carrie", "want_to_read_count": 2000},
+            {"key": "/works/OL3W", "rank": 3, "title": "Misery", "want_to_read_count": 2500},
+            {"key": "/works/OL4W", "rank": 4, "title": "The Shining", "want_to_read_count": 150},
+            {"key": "/works/OL5W", "rank": 5, "title": "Salem's Lot", "want_to_read_count": 50},
+        ]),
+    }
+    result = _run_gt(collected, tmpl.get_ground_truth({
+        "author_name": "Stephen King", "author_query": "stephen king",
+        "search_query": 'author:"stephen king"', "sort": "editions",
+        "work_count": 5, "metric": "want_to_read_count",
+        "metric_label": "people who want to read them", "threshold": 200,
+    }))
+    assert result.success is True
+    assert result.value == "3"
+
+
 def test_filter_not_collected_wrong_author():
     tmpl = OpenLibraryReadingStatsFilterTemplate()
     collected = {
@@ -550,6 +616,54 @@ def test_find_author_search_entry_rejects_wrong_sort():
         collected, search_query='author:"mark twain"', sort="new",
     )
     assert result is None
+
+
+def test_find_author_search_entry_unsorted_fallback_disabled_by_default():
+    collected = {
+        "ol:search:christie": _make_search_entry("agatha christie", None, [
+            {"key": "/works/OL1W", "rank": 1, "title": "Styles"},
+        ]),
+    }
+    result = find_author_search_entry(
+        collected, search_query='author:"agatha christie"', sort="editions",
+    )
+    assert result is None
+
+
+def test_find_author_search_entry_matches_unsorted_when_fallback_enabled():
+    collected = {
+        "ol:search:christie": _make_search_entry("agatha christie", None, [
+            {"key": "/works/OL1W", "rank": 1, "title": "Styles"},
+        ]),
+    }
+    result = find_author_search_entry(
+        collected,
+        search_query='author:"agatha christie"',
+        sort="editions",
+        allow_unsorted_fallback=True,
+    )
+    assert result is not None
+    assert result["query"] == "agatha christie"
+
+
+def test_find_author_search_entry_prefers_exact_sort_over_unsorted_fallback():
+    collected = {
+        "ol:search:unsorted": _make_search_entry("agatha christie", None, [
+            {"key": "/works/OL1W", "rank": 1, "title": "Unsorted"},
+        ]),
+        "ol:search:sorted": _make_search_entry("agatha christie", "editions", [
+            {"key": "/works/OL2W", "rank": 1, "title": "Sorted"},
+        ]),
+    }
+    result = find_author_search_entry(
+        collected,
+        search_query='author:"agatha christie"',
+        sort="editions",
+        allow_unsorted_fallback=True,
+    )
+    assert result is not None
+    assert result["sort"] == "editions"
+    assert result["query"] == "agatha christie"
 
 
 def test_find_author_search_entry_matches_plain_text_query():
