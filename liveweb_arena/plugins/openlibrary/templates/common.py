@@ -144,8 +144,11 @@ def find_author_search_entry(
     """
     Find search data for an author-filtered search query.
 
-    Requires author-filter syntax (``author:"name"``) to keep page semantics
-    aligned with the question ("books by <author>").
+    The *search_query* passed by the template always uses ``author:"name"``
+    syntax, but the agent may have typed a plain-text query like
+    ``agatha christie`` instead.  To handle both cases the collected entry's
+    query is first checked for ``author:`` syntax; if that is absent the
+    raw query text is normalized and compared directly.
     """
     target_author = extract_author_filter(search_query)
     if not target_author:
@@ -167,6 +170,8 @@ def find_author_search_entry(
             continue
 
         entry_author = extract_author_filter(entry_query)
+        if entry_author is None:
+            entry_author = normalize_author_fragment(entry_query)
         if entry_author == target_author:
             matched_entry = entry
 

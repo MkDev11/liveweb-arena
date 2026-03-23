@@ -552,6 +552,59 @@ def test_find_author_search_entry_rejects_wrong_sort():
     assert result is None
 
 
+def test_find_author_search_entry_matches_plain_text_query():
+    """Agent typed 'agatha christie' instead of 'author:\"agatha christie\"'."""
+    collected = {
+        "ol:search:christie": _make_search_entry("agatha christie", "editions", [
+            {"key": "/works/OL1W", "rank": 1, "title": "Styles"},
+        ]),
+    }
+    result = find_author_search_entry(
+        collected, search_query='author:"agatha christie"', sort="editions",
+    )
+    assert result is not None
+    assert result["query"] == "agatha christie"
+
+
+def test_find_author_search_entry_plain_text_wrong_author_no_match():
+    """Plain-text fallback must still reject a different author."""
+    collected = {
+        "ol:search:king": _make_search_entry("stephen king", "editions", [
+            {"key": "/works/OL1W", "rank": 1, "title": "It"},
+        ]),
+    }
+    result = find_author_search_entry(
+        collected, search_query='author:"agatha christie"', sort="editions",
+    )
+    assert result is None
+
+
+def test_comparison_matches_when_second_author_uses_plain_text():
+    """Regression: author_comparison must not return not_collected when the
+    agent searches for the second author using plain text."""
+    tmpl = OpenLibraryAuthorComparisonTemplate()
+    collected = {
+        "ol:search:king": _make_search_entry('author:"stephen king"', "editions", [
+            {"key": "/works/OL1W", "rank": 1, "title": "It", "ratings_count": 500},
+        ]),
+        "ol:search:christie": _make_search_entry("agatha christie", "editions", [
+            {"key": "/works/OL3W", "rank": 1, "title": "Styles", "ratings_count": 100},
+        ]),
+    }
+    result = _run_gt(collected, tmpl.get_ground_truth({
+        "author_a_name": "Stephen King",
+        "author_a_query": "stephen king",
+        "search_query_a": 'author:"stephen king"',
+        "author_b_name": "Agatha Christie",
+        "author_b_query": "agatha christie",
+        "search_query_b": 'author:"agatha christie"',
+        "sort": "editions", "work_count": 1, "metric": "ratings_count",
+        "metric_label": "total number of ratings",
+    }))
+    assert result.success is True
+    assert result.value == "Stephen King"
+
+
 # ── 8. Cross-template consistency ─────────────────────────────────────
 
 
