@@ -270,6 +270,9 @@ class CacheManager:
 
     # Minimum interval between consecutive cache-miss fetches (seconds)
     _PREFETCH_INTERVAL = 1.0
+    # Retry transient _fetch_page failures (timeout, 5xx, connection reset)
+    _MAX_PAGE_RETRIES = 2
+    _PAGE_RETRY_DELAY = 3.0
 
     def __init__(self, cache_dir: Path, ttl: int = None):
         self.cache_dir = Path(cache_dir)
@@ -378,54 +381,30 @@ class CacheManager:
             start = time.time()
 
             try:
+                html, accessibility_tree = await self._fetch_page_with_retry(
+                    url, plugin,
+                )
+
                 if need_api:
-                    # Fetch HTML and API data concurrently
-                    page_task = asyncio.ensure_future(self._fetch_page(url, plugin))
-                    api_task = asyncio.ensure_future(plugin.fetch_api_data(url))
-
-                    # Wait for both, collecting errors
-                    page_result = None
-                    page_error = None
-                    api_data = None
-                    api_error = None
-
-                    try:
-                        page_result = await page_task
-                    except Exception as e:
-                        page_error = e
-                        api_task.cancel()
-
-                    if page_error is None:
+                    # If the plugin can derive GT from the already-fetched HTML,
+                    # skip the separate network request.  This avoids a redundant
+                    # concurrent fetch to the same URL (e.g. ArXiv listing pages).
+                    api_data = plugin.extract_api_data_from_html(url, html)
+                    if api_data is None:
+                        # Plugin requires an independent API call
                         try:
-                            api_data = await api_task
+                            api_data = await plugin.fetch_api_data(url)
                         except Exception as e:
-                            api_error = e
-
-                    if page_error is not None:
-                        raise CacheFatalError(
-                            f"Page fetch failed (browser cannot load): {page_error}",
-                            url=url,
-                        )
-                    html, accessibility_tree = page_result
-
-                    if api_error is not None:
-                        raise CacheFatalError(
-                            f"API data fetch failed (GT will be invalid): {api_error}",
-                            url=url,
-                        )
+                            raise CacheFatalError(
+                                f"API data fetch failed (GT will be invalid): {e}",
+                                url=url,
+                            )
                     if not api_data:
                         raise CacheFatalError(
                             f"API data is empty (GT will be invalid)",
                             url=url,
                         )
                 else:
-                    try:
-                        html, accessibility_tree = await self._fetch_page(url, plugin)
-                    except Exception as e:
-                        raise CacheFatalError(
-                            f"Page fetch failed (browser cannot load): {e}",
-                            url=url,
-                        )
                     api_data = None
 
                 cached = CachedPage(
@@ -506,6 +485,35 @@ class CacheManager:
         cache_file.parent.mkdir(parents=True, exist_ok=True)
         with open(cache_file, 'w', encoding='utf-8') as f:
             json.dump(cached.to_dict(), f, ensure_ascii=False)
+
+    async def _fetch_page_with_retry(self, url: str, plugin=None) -> tuple:
+        """Fetch page HTML with retry for transient failures.
+
+        Retries on timeouts, HTTP 5xx, and connection errors.
+        Permanent failures (HTTP 4xx, CAPTCHA) are raised immediately.
+        """
+        last_error: Exception = None
+        for attempt in range(self._MAX_PAGE_RETRIES):
+            try:
+                return await self._fetch_page(url, plugin)
+            except CacheFatalError as e:
+                msg = str(e)
+                # Permanent failures — do not retry
+                if any(s in msg for s in ("CAPTCHA", "HTTP 4")):
+                    raise
+                last_error = e
+            except Exception as e:
+                last_error = e
+
+            if attempt < self._MAX_PAGE_RETRIES - 1:
+                log("Cache", f"Page fetch retry {attempt + 1} for "
+                    f"{url_display(url)}: {last_error}")
+                await asyncio.sleep(self._PAGE_RETRY_DELAY)
+
+        raise CacheFatalError(
+            f"Page fetch failed (browser cannot load): {last_error}",
+            url=url,
+        )
 
     async def _fetch_page(self, url: str, plugin=None) -> tuple:
         """
