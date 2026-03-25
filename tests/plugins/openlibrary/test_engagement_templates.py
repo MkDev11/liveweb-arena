@@ -255,6 +255,25 @@ def test_extrema_missing_metric_treated_as_zero():
     assert result.value == "Oliver Twist"  # 100 > 0 (missing treated as 0)
 
 
+def test_extrema_non_numeric_metric_treated_as_zero():
+    """Non-numeric metric values (e.g. 'N/A') must not crash with TypeError."""
+    tmpl = OpenLibraryAuthorEngagementExtremaTemplate()
+    collected = {
+        "ol:search:dickens": _make_search_entry('author:"charles dickens"', "editions", [
+            {"key": "/works/OL1W", "rank": 1, "title": "Oliver Twist", "want_to_read_count": 100},
+            {"key": "/works/OL2W", "rank": 2, "title": "David Copperfield", "want_to_read_count": "N/A"},
+        ]),
+    }
+    result = _run_gt(collected, tmpl.get_ground_truth({
+        "author_name": "Charles Dickens", "author_query": "charles dickens",
+        "search_query": 'author:"charles dickens"', "sort": "editions",
+        "work_count": 2, "extrema": "highest", "metric": "want_to_read_count",
+        "metric_label": "want-to-read count",
+    }))
+    assert result.success is True
+    assert result.value == "Oliver Twist"  # 100 > 0 ("N/A" treated as 0)
+
+
 def test_extrema_no_collected_data():
     tmpl = OpenLibraryAuthorEngagementExtremaTemplate()
     result = _run_gt({}, tmpl.get_ground_truth({

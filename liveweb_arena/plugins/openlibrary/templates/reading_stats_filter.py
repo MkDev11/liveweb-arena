@@ -188,7 +188,8 @@ class OpenLibraryReadingStatsFilterTemplate(QuestionTemplate):
             # OL API omits count fields when the value is zero; treat
             # absent metrics as 0 rather than failing.
             raw = work.get(metric)
-            value = parse_numeric(raw) if raw is not None else 0.0
+            parsed = parse_numeric(raw) if raw is not None else None
+            value = parsed if parsed is not None else 0.0
             if int(value) > threshold:
                 match_count += 1
 
