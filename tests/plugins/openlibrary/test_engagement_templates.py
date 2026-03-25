@@ -89,10 +89,8 @@ def test_engagement_extrema_generate(seed):
     assert "openlibrary.org" in q.start_url
     assert q.template_name == "openlibrary_author_engagement_extrema"
     assert q.validation_info["extrema"] in {"highest", "lowest"}
-    assert q.validation_info["metric"] in {
-        "want_to_read_count", "ratings_count",
-    }
-    assert q.validation_info["work_count"] in {3, 5, 7, 10}
+    assert q.validation_info["metric"] == "want_to_read_count"
+    assert q.validation_info["work_count"] in {3, 5, 7, 10, 15}
     assert "q=author%3A%22" in q.start_url
     assert "sort=editions" in q.start_url
 
@@ -104,9 +102,7 @@ def test_author_comparison_generate(seed):
     assert "openlibrary.org" in q.start_url
     assert q.template_name == "openlibrary_author_comparison"
     assert q.validation_info["author_a_name"] != q.validation_info["author_b_name"]
-    assert q.validation_info["metric"] in {
-        "ratings_count", "want_to_read_count",
-    }
+    assert q.validation_info["metric"] == "want_to_read_count"
     assert q.validation_info["work_count"] in {3, 5}
 
 
@@ -116,10 +112,8 @@ def test_reading_stats_filter_generate(seed):
     assert q.question_text
     assert "openlibrary.org" in q.start_url
     assert q.template_name == "openlibrary_reading_stats_filter"
-    assert q.validation_info["metric"] in {
-        "want_to_read_count", "ratings_count",
-    }
-    assert q.validation_info["work_count"] in {5, 10}
+    assert q.validation_info["metric"] == "want_to_read_count"
+    assert q.validation_info["work_count"] in {5, 10, 15}
     assert isinstance(q.validation_info["threshold"], int)
 
 
@@ -205,15 +199,15 @@ def test_extrema_tie_breaks_alphabetically():
     tmpl = OpenLibraryAuthorEngagementExtremaTemplate()
     collected = {
         "ol:search:dickens": _make_search_entry('author:"charles dickens"', "editions", [
-            {"key": "/works/OL1W", "rank": 1, "title": "Oliver Twist", "ratings_count": 100},
-            {"key": "/works/OL2W", "rank": 2, "title": "David Copperfield", "ratings_count": 100},
+            {"key": "/works/OL1W", "rank": 1, "title": "Oliver Twist", "want_to_read_count": 100},
+            {"key": "/works/OL2W", "rank": 2, "title": "David Copperfield", "want_to_read_count": 100},
         ]),
     }
     result = _run_gt(collected, tmpl.get_ground_truth({
         "author_name": "Charles Dickens", "author_query": "charles dickens",
         "search_query": 'author:"charles dickens"', "sort": "editions",
-        "work_count": 2, "extrema": "highest", "metric": "ratings_count",
-        "metric_label": "number of ratings",
+        "work_count": 2, "extrema": "highest", "metric": "want_to_read_count",
+        "metric_label": "want-to-read count",
     }))
     assert result.success is True
     assert result.value == "David Copperfield"  # alphabetically earlier
@@ -255,8 +249,9 @@ def test_extrema_missing_metric_treated_as_zero():
     assert result.value == "Oliver Twist"  # 100 > 0 (missing treated as 0)
 
 
-def test_extrema_non_numeric_metric_treated_as_zero():
-    """Non-numeric metric values (e.g. 'N/A') must not crash with TypeError."""
+def test_extrema_non_numeric_metric_causes_gt_failure():
+    """Non-null non-numeric metric values (e.g. 'N/A') should cause a GT fail,
+    not be silently treated as 0 — this signals unexpected data."""
     tmpl = OpenLibraryAuthorEngagementExtremaTemplate()
     collected = {
         "ol:search:dickens": _make_search_entry('author:"charles dickens"', "editions", [
@@ -270,8 +265,7 @@ def test_extrema_non_numeric_metric_treated_as_zero():
         "work_count": 2, "extrema": "highest", "metric": "want_to_read_count",
         "metric_label": "want-to-read count",
     }))
-    assert result.success is True
-    assert result.value == "Oliver Twist"  # 100 > 0 ("N/A" treated as 0)
+    assert result.success is False
 
 
 def test_extrema_no_collected_data():
@@ -292,12 +286,12 @@ def test_comparison_picks_higher_total():
     tmpl = OpenLibraryAuthorComparisonTemplate()
     collected = {
         "ol:search:king": _make_search_entry('author:"stephen king"', "editions", [
-            {"key": "/works/OL1W", "rank": 1, "title": "It", "ratings_count": 500},
-            {"key": "/works/OL2W", "rank": 2, "title": "Carrie", "ratings_count": 200},
+            {"key": "/works/OL1W", "rank": 1, "title": "It", "want_to_read_count": 500},
+            {"key": "/works/OL2W", "rank": 2, "title": "Carrie", "want_to_read_count": 200},
         ]),
         "ol:search:christie": _make_search_entry('author:"agatha christie"', "editions", [
-            {"key": "/works/OL3W", "rank": 1, "title": "Styles", "ratings_count": 100},
-            {"key": "/works/OL4W", "rank": 2, "title": "Adversary", "ratings_count": 50},
+            {"key": "/works/OL3W", "rank": 1, "title": "Styles", "want_to_read_count": 100},
+            {"key": "/works/OL4W", "rank": 2, "title": "Adversary", "want_to_read_count": 50},
         ]),
     }
     result = _run_gt(collected, tmpl.get_ground_truth({
@@ -307,8 +301,8 @@ def test_comparison_picks_higher_total():
         "author_b_name": "Agatha Christie",
         "author_b_query": "agatha christie",
         "search_query_b": 'author:"agatha christie"',
-        "sort": "editions", "work_count": 2, "metric": "ratings_count",
-        "metric_label": "total number of ratings",
+        "sort": "editions", "work_count": 2, "metric": "want_to_read_count",
+        "metric_label": "total want-to-read count",
     }))
     assert result.success is True
     assert result.value == "Stephen King"  # 700 > 150
@@ -344,10 +338,10 @@ def test_comparison_tie_breaks_alphabetically():
     tmpl = OpenLibraryAuthorComparisonTemplate()
     collected = {
         "ol:search:king": _make_search_entry('author:"stephen king"', "editions", [
-            {"key": "/works/OL1W", "rank": 1, "title": "It", "ratings_count": 300},
+            {"key": "/works/OL1W", "rank": 1, "title": "It", "want_to_read_count": 300},
         ]),
         "ol:search:christie": _make_search_entry('author:"agatha christie"', "editions", [
-            {"key": "/works/OL3W", "rank": 1, "title": "Styles", "ratings_count": 300},
+            {"key": "/works/OL3W", "rank": 1, "title": "Styles", "want_to_read_count": 300},
         ]),
     }
     result = _run_gt(collected, tmpl.get_ground_truth({
@@ -357,8 +351,8 @@ def test_comparison_tie_breaks_alphabetically():
         "author_b_name": "Agatha Christie",
         "author_b_query": "agatha christie",
         "search_query_b": 'author:"agatha christie"',
-        "sort": "editions", "work_count": 1, "metric": "ratings_count",
-        "metric_label": "total number of ratings",
+        "sort": "editions", "work_count": 1, "metric": "want_to_read_count",
+        "metric_label": "total want-to-read count",
     }))
     assert result.success is True
     assert result.value == "Agatha Christie"  # alphabetically earlier
@@ -368,12 +362,12 @@ def test_comparison_matches_unsorted_queries_when_sort_not_collected():
     tmpl = OpenLibraryAuthorComparisonTemplate()
     collected = {
         "ol:search:king": _make_search_entry("stephen king", None, [
-            {"key": "/works/OL1W", "rank": 1, "title": "It", "ratings_count": 500},
-            {"key": "/works/OL2W", "rank": 2, "title": "Carrie", "ratings_count": 200},
+            {"key": "/works/OL1W", "rank": 1, "title": "It", "want_to_read_count": 500},
+            {"key": "/works/OL2W", "rank": 2, "title": "Carrie", "want_to_read_count": 200},
         ]),
         "ol:search:christie": _make_search_entry("agatha christie", None, [
-            {"key": "/works/OL3W", "rank": 1, "title": "Styles", "ratings_count": 100},
-            {"key": "/works/OL4W", "rank": 2, "title": "Adversary", "ratings_count": 50},
+            {"key": "/works/OL3W", "rank": 1, "title": "Styles", "want_to_read_count": 100},
+            {"key": "/works/OL4W", "rank": 2, "title": "Adversary", "want_to_read_count": 50},
         ]),
     }
     result = _run_gt(collected, tmpl.get_ground_truth({
@@ -383,8 +377,8 @@ def test_comparison_matches_unsorted_queries_when_sort_not_collected():
         "author_b_name": "Agatha Christie",
         "author_b_query": "agatha christie",
         "search_query_b": 'author:"agatha christie"',
-        "sort": "editions", "work_count": 2, "metric": "ratings_count",
-        "metric_label": "total number of ratings",
+        "sort": "editions", "work_count": 2, "metric": "want_to_read_count",
+        "metric_label": "total want-to-read count",
     }))
     assert result.success is True
     assert result.value == "Stephen King"
@@ -394,7 +388,7 @@ def test_comparison_not_collected_missing_author():
     tmpl = OpenLibraryAuthorComparisonTemplate()
     collected = {
         "ol:search:king": _make_search_entry('author:"stephen king"', "editions", [
-            {"key": "/works/OL1W", "rank": 1, "title": "It", "ratings_count": 500},
+            {"key": "/works/OL1W", "rank": 1, "title": "It", "want_to_read_count": 500},
         ]),
     }
     result = _run_gt(collected, tmpl.get_ground_truth({
@@ -404,8 +398,8 @@ def test_comparison_not_collected_missing_author():
         "author_b_name": "Agatha Christie",
         "author_b_query": "agatha christie",
         "search_query_b": 'author:"agatha christie"',
-        "sort": "editions", "work_count": 1, "metric": "ratings_count",
-        "metric_label": "total number of ratings",
+        "sort": "editions", "work_count": 1, "metric": "want_to_read_count",
+        "metric_label": "total want-to-read count",
     }))
     assert result.success is False
     assert result.is_data_not_collected()
@@ -418,7 +412,7 @@ def test_comparison_no_collected_data():
         "search_query_a": 'author:"a"',
         "author_b_name": "B", "author_b_query": "b",
         "search_query_b": 'author:"b"',
-        "sort": "editions", "work_count": 1, "metric": "ratings_count",
+        "sort": "editions", "work_count": 1, "metric": "want_to_read_count",
         "metric_label": "x",
     }))
     assert result.success is False
@@ -429,7 +423,7 @@ def test_comparison_missing_metric_treated_as_zero():
     tmpl = OpenLibraryAuthorComparisonTemplate()
     collected = {
         "ol:search:king": _make_search_entry('author:"stephen king"', "editions", [
-            {"key": "/works/OL1W", "rank": 1, "title": "It", "ratings_count": 500},
+            {"key": "/works/OL1W", "rank": 1, "title": "It", "want_to_read_count": 500},
         ]),
         "ol:search:christie": _make_search_entry('author:"agatha christie"', "editions", [
             {"key": "/works/OL3W", "rank": 1, "title": "Styles"},
@@ -442,8 +436,8 @@ def test_comparison_missing_metric_treated_as_zero():
         "author_b_name": "Agatha Christie",
         "author_b_query": "agatha christie",
         "search_query_b": 'author:"agatha christie"',
-        "sort": "editions", "work_count": 1, "metric": "ratings_count",
-        "metric_label": "total number of ratings",
+        "sort": "editions", "work_count": 1, "metric": "want_to_read_count",
+        "metric_label": "total want-to-read count",
     }))
     assert result.success is True
     assert result.value == "Stephen King"  # 500 > 0 (missing treated as 0)
@@ -477,15 +471,15 @@ def test_filter_returns_zero_when_none_match():
     tmpl = OpenLibraryReadingStatsFilterTemplate()
     collected = {
         "ol:search:poe": _make_search_entry('author:"edgar allan poe"', "editions", [
-            {"key": "/works/OL1W", "rank": 1, "title": "The Raven", "ratings_count": 10},
-            {"key": "/works/OL2W", "rank": 2, "title": "Annabel Lee", "ratings_count": 5},
+            {"key": "/works/OL1W", "rank": 1, "title": "The Raven", "want_to_read_count": 10},
+            {"key": "/works/OL2W", "rank": 2, "title": "Annabel Lee", "want_to_read_count": 5},
         ]),
     }
     result = _run_gt(collected, tmpl.get_ground_truth({
         "author_name": "Edgar Allan Poe", "author_query": "edgar allan poe",
         "search_query": 'author:"edgar allan poe"', "sort": "editions",
-        "work_count": 2, "metric": "ratings_count",
-        "metric_label": "ratings", "threshold": 500,
+        "work_count": 2, "metric": "want_to_read_count",
+        "metric_label": "people who want to read them", "threshold": 500,
     }))
     assert result.success is True
     assert result.value == "0"
@@ -495,15 +489,15 @@ def test_filter_exact_threshold_not_counted():
     tmpl = OpenLibraryReadingStatsFilterTemplate()
     collected = {
         "ol:search:poe": _make_search_entry('author:"edgar allan poe"', "editions", [
-            {"key": "/works/OL1W", "rank": 1, "title": "The Raven", "ratings_count": 100},
-            {"key": "/works/OL2W", "rank": 2, "title": "Annabel Lee", "ratings_count": 101},
+            {"key": "/works/OL1W", "rank": 1, "title": "The Raven", "want_to_read_count": 100},
+            {"key": "/works/OL2W", "rank": 2, "title": "Annabel Lee", "want_to_read_count": 101},
         ]),
     }
     result = _run_gt(collected, tmpl.get_ground_truth({
         "author_name": "Edgar Allan Poe", "author_query": "edgar allan poe",
         "search_query": 'author:"edgar allan poe"', "sort": "editions",
-        "work_count": 2, "metric": "ratings_count",
-        "metric_label": "ratings", "threshold": 100,
+        "work_count": 2, "metric": "want_to_read_count",
+        "metric_label": "people who want to read them", "threshold": 100,
     }))
     assert result.success is True
     assert result.value == "1"  # only 101 > 100, not 100 > 100
@@ -724,10 +718,10 @@ def test_comparison_matches_when_second_author_uses_plain_text():
     tmpl = OpenLibraryAuthorComparisonTemplate()
     collected = {
         "ol:search:king": _make_search_entry('author:"stephen king"', "editions", [
-            {"key": "/works/OL1W", "rank": 1, "title": "It", "ratings_count": 500},
+            {"key": "/works/OL1W", "rank": 1, "title": "It", "want_to_read_count": 500},
         ]),
         "ol:search:christie": _make_search_entry("agatha christie", "editions", [
-            {"key": "/works/OL3W", "rank": 1, "title": "Styles", "ratings_count": 100},
+            {"key": "/works/OL3W", "rank": 1, "title": "Styles", "want_to_read_count": 100},
         ]),
     }
     result = _run_gt(collected, tmpl.get_ground_truth({
@@ -737,8 +731,8 @@ def test_comparison_matches_when_second_author_uses_plain_text():
         "author_b_name": "Agatha Christie",
         "author_b_query": "agatha christie",
         "search_query_b": 'author:"agatha christie"',
-        "sort": "editions", "work_count": 1, "metric": "ratings_count",
-        "metric_label": "total number of ratings",
+        "sort": "editions", "work_count": 1, "metric": "want_to_read_count",
+        "metric_label": "total want-to-read count",
     }))
     assert result.success is True
     assert result.value == "Stephen King"
@@ -767,17 +761,17 @@ def test_cache_source_is_openlibrary(cls):
 
 def test_engagement_extrema_metrics_use_confirmed_visible_fields():
     metric_names = {m.value[0] for m in EngagementMetric}
-    assert metric_names == {"want_to_read_count", "ratings_count"}
+    assert metric_names == {"want_to_read_count"}
 
 
 def test_author_comparison_metrics_use_confirmed_visible_fields():
     metric_names = {m.value[0] for m in AuthorMetric}
-    assert metric_names == {"ratings_count", "want_to_read_count"}
+    assert metric_names == {"want_to_read_count"}
 
 
 def test_reading_filter_metrics_use_confirmed_visible_fields():
     metric_names = {m.value[0] for m in ReaderMetric}
-    assert metric_names == {"want_to_read_count", "ratings_count"}
+    assert metric_names == {"want_to_read_count"}
 
 
 def test_all_new_templates_reuse_author_pool():

@@ -56,13 +56,21 @@ def parse_numeric(value: Any) -> Optional[float]:
 def safe_metric_value(work: Dict[str, Any], metric: str) -> float:
     """Read an engagement metric from a work dict, defaulting to 0.
 
-    The OL API omits count fields when the value is zero and may
-    occasionally store non-numeric placeholders.  Both cases are
-    treated as 0.0 so that callers never encounter ``None``.
+    The OL API omits count fields when the value is zero, so absent
+    values are treated as ``0.0``.  Non-null values that cannot be
+    parsed as a number indicate unexpected data and cause a
+    ``ValueError`` so callers can surface a proper GT failure.
     """
     raw = work.get(metric)
-    parsed = parse_numeric(raw) if raw is not None else None
-    return parsed if parsed is not None else 0.0
+    if raw is None:
+        return 0.0
+    parsed = parse_numeric(raw)
+    if parsed is None:
+        title = work.get("title", "<unknown>")
+        raise ValueError(
+            f"Non-numeric '{metric}' value {raw!r} for work '{title}'"
+        )
+    return parsed
 
 
 def get_collected_data() -> Optional[Dict[str, Dict[str, Any]]]:
