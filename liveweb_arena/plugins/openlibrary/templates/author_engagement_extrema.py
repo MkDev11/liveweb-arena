@@ -2,8 +2,8 @@
 
 RL-friendly design:
 - Requires searching for an author and scanning multiple results
-- Dynamic data: want_to_read and already_read counts change continuously
-- Large entity pool: 70 authors × 2 extrema × 3 metrics × 4 result counts = 1,680 variants
+- Dynamic data: want_to_read counts and ratings change continuously
+- Large entity pool: 61 authors × 2 extrema × 2 metrics × 4 result counts = 976 variants
 - Computation required: must compare values across N books to find extremum
 """
 
@@ -37,7 +37,6 @@ class ExtremaType(Enum):
 class EngagementMetric(Enum):
     """Reader engagement metrics confirmed visible on search result pages."""
     WANT_TO_READ = ("want_to_read_count", "want-to-read count")
-    ALREADY_READ = ("already_read_count", "already-read count")
     RATINGS_COUNT = ("ratings_count", "number of ratings")
 
 

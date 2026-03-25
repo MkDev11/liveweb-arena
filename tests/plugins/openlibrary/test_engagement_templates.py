@@ -90,7 +90,7 @@ def test_engagement_extrema_generate(seed):
     assert q.template_name == "openlibrary_author_engagement_extrema"
     assert q.validation_info["extrema"] in {"highest", "lowest"}
     assert q.validation_info["metric"] in {
-        "want_to_read_count", "already_read_count", "ratings_count",
+        "want_to_read_count", "ratings_count",
     }
     assert q.validation_info["work_count"] in {3, 5, 7, 10}
     assert "q=author%3A%22" in q.start_url
@@ -105,7 +105,7 @@ def test_author_comparison_generate(seed):
     assert q.template_name == "openlibrary_author_comparison"
     assert q.validation_info["author_a_name"] != q.validation_info["author_b_name"]
     assert q.validation_info["metric"] in {
-        "ratings_count", "want_to_read_count", "already_read_count",
+        "ratings_count", "want_to_read_count",
     }
     assert q.validation_info["work_count"] in {3, 5}
 
@@ -117,7 +117,7 @@ def test_reading_stats_filter_generate(seed):
     assert "openlibrary.org" in q.start_url
     assert q.template_name == "openlibrary_reading_stats_filter"
     assert q.validation_info["metric"] in {
-        "want_to_read_count", "already_read_count", "ratings_count",
+        "want_to_read_count", "ratings_count",
     }
     assert q.validation_info["work_count"] in {5, 10}
     assert isinstance(q.validation_info["threshold"], int)
@@ -163,20 +163,20 @@ def test_extrema_finds_highest_want_to_read():
     assert result.value == "It"
 
 
-def test_extrema_finds_lowest_already_read():
+def test_extrema_finds_lowest_want_to_read():
     tmpl = OpenLibraryAuthorEngagementExtremaTemplate()
     collected = {
         "ol:search:austen": _make_search_entry('author:"jane austen"', "editions", [
-            {"key": "/works/OL1W", "rank": 1, "title": "Sense and Sensibility", "already_read_count": 50},
-            {"key": "/works/OL2W", "rank": 2, "title": "Pride and Prejudice", "already_read_count": 500},
-            {"key": "/works/OL3W", "rank": 3, "title": "Emma", "already_read_count": 200},
+            {"key": "/works/OL1W", "rank": 1, "title": "Sense and Sensibility", "want_to_read_count": 50},
+            {"key": "/works/OL2W", "rank": 2, "title": "Pride and Prejudice", "want_to_read_count": 500},
+            {"key": "/works/OL3W", "rank": 3, "title": "Emma", "want_to_read_count": 200},
         ]),
     }
     result = _run_gt(collected, tmpl.get_ground_truth({
         "author_name": "Jane Austen", "author_query": "jane austen",
         "search_query": 'author:"jane austen"', "sort": "editions",
-        "work_count": 3, "extrema": "lowest", "metric": "already_read_count",
-        "metric_label": "already-read count",
+        "work_count": 3, "extrema": "lowest", "metric": "want_to_read_count",
+        "metric_label": "want-to-read count",
     }))
     assert result.success is True
     assert result.value == "Sense and Sensibility"
@@ -186,16 +186,16 @@ def test_extrema_matches_unsorted_query_when_sort_not_collected():
     tmpl = OpenLibraryAuthorEngagementExtremaTemplate()
     collected = {
         "ol:search:austen": _make_search_entry("jane austen", None, [
-            {"key": "/works/OL1W", "rank": 1, "title": "Sense and Sensibility", "already_read_count": 50},
-            {"key": "/works/OL2W", "rank": 2, "title": "Pride and Prejudice", "already_read_count": 500},
-            {"key": "/works/OL3W", "rank": 3, "title": "Emma", "already_read_count": 200},
+            {"key": "/works/OL1W", "rank": 1, "title": "Sense and Sensibility", "want_to_read_count": 50},
+            {"key": "/works/OL2W", "rank": 2, "title": "Pride and Prejudice", "want_to_read_count": 500},
+            {"key": "/works/OL3W", "rank": 3, "title": "Emma", "want_to_read_count": 200},
         ]),
     }
     result = _run_gt(collected, tmpl.get_ground_truth({
         "author_name": "Jane Austen", "author_query": "jane austen",
         "search_query": 'author:"jane austen"', "sort": "editions",
-        "work_count": 3, "extrema": "lowest", "metric": "already_read_count",
-        "metric_label": "already-read count",
+        "work_count": 3, "extrema": "lowest", "metric": "want_to_read_count",
+        "metric_label": "want-to-read count",
     }))
     assert result.success is True
     assert result.value == "Sense and Sensibility"
@@ -323,10 +323,10 @@ def test_comparison_tie_breaks_alphabetically():
     tmpl = OpenLibraryAuthorComparisonTemplate()
     collected = {
         "ol:search:king": _make_search_entry('author:"stephen king"', "editions", [
-            {"key": "/works/OL1W", "rank": 1, "title": "It", "already_read_count": 300},
+            {"key": "/works/OL1W", "rank": 1, "title": "It", "ratings_count": 300},
         ]),
         "ol:search:christie": _make_search_entry('author:"agatha christie"', "editions", [
-            {"key": "/works/OL3W", "rank": 1, "title": "Styles", "already_read_count": 300},
+            {"key": "/works/OL3W", "rank": 1, "title": "Styles", "ratings_count": 300},
         ]),
     }
     result = _run_gt(collected, tmpl.get_ground_truth({
@@ -336,8 +336,8 @@ def test_comparison_tie_breaks_alphabetically():
         "author_b_name": "Agatha Christie",
         "author_b_query": "agatha christie",
         "search_query_b": 'author:"agatha christie"',
-        "sort": "editions", "work_count": 1, "metric": "already_read_count",
-        "metric_label": "total already-read count",
+        "sort": "editions", "work_count": 1, "metric": "ratings_count",
+        "metric_label": "total number of ratings",
     }))
     assert result.success is True
     assert result.value == "Agatha Christie"  # alphabetically earlier
@@ -454,15 +454,15 @@ def test_filter_returns_zero_when_none_match():
     tmpl = OpenLibraryReadingStatsFilterTemplate()
     collected = {
         "ol:search:poe": _make_search_entry('author:"edgar allan poe"', "editions", [
-            {"key": "/works/OL1W", "rank": 1, "title": "The Raven", "already_read_count": 10},
-            {"key": "/works/OL2W", "rank": 2, "title": "Annabel Lee", "already_read_count": 5},
+            {"key": "/works/OL1W", "rank": 1, "title": "The Raven", "ratings_count": 10},
+            {"key": "/works/OL2W", "rank": 2, "title": "Annabel Lee", "ratings_count": 5},
         ]),
     }
     result = _run_gt(collected, tmpl.get_ground_truth({
         "author_name": "Edgar Allan Poe", "author_query": "edgar allan poe",
         "search_query": 'author:"edgar allan poe"', "sort": "editions",
-        "work_count": 2, "metric": "already_read_count",
-        "metric_label": "people who have already read them", "threshold": 500,
+        "work_count": 2, "metric": "ratings_count",
+        "metric_label": "ratings", "threshold": 500,
     }))
     assert result.success is True
     assert result.value == "0"
@@ -742,17 +742,17 @@ def test_cache_source_is_openlibrary(cls):
 
 def test_engagement_extrema_metrics_use_confirmed_visible_fields():
     metric_names = {m.value[0] for m in EngagementMetric}
-    assert metric_names == {"want_to_read_count", "already_read_count", "ratings_count"}
+    assert metric_names == {"want_to_read_count", "ratings_count"}
 
 
 def test_author_comparison_metrics_use_confirmed_visible_fields():
     metric_names = {m.value[0] for m in AuthorMetric}
-    assert metric_names == {"ratings_count", "want_to_read_count", "already_read_count"}
+    assert metric_names == {"ratings_count", "want_to_read_count"}
 
 
 def test_reading_filter_metrics_use_confirmed_visible_fields():
     metric_names = {m.value[0] for m in ReaderMetric}
-    assert metric_names == {"want_to_read_count", "already_read_count", "ratings_count"}
+    assert metric_names == {"want_to_read_count", "ratings_count"}
 
 
 def test_all_new_templates_reuse_author_pool():

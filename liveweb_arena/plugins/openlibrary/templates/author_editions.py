@@ -19,7 +19,7 @@ from liveweb_arena.core.validators.base import (
 from .common import find_author_search_entry, get_collected_data, parse_numeric
 
 AUTHOR_POOL = [
-    # --- Original pool (20) ---
+    # --- Original pool (19) ---
     ("Charles Dickens", "charles dickens"),
     ("Jane Austen", "jane austen"),
     ("William Shakespeare", "william shakespeare"),
@@ -37,18 +37,14 @@ AUTHOR_POOL = [
     ("Franz Kafka", "franz kafka"),
     ("Herman Melville", "herman melville"),
     ("Victor Hugo", "victor hugo"),
-    ("Emily Bronte", "emily bronte"),
     ("Miguel de Cervantes", "miguel de cervantes"),
     ("Alexandre Dumas", "alexandre dumas"),
-    # --- Expanded pool (50) ---
-    ("Leo Tolstoy", "leo tolstoy"),
-    ("Fyodor Dostoevsky", "fyodor dostoevsky"),
+    # --- Expanded pool (42) ---
     ("Thomas Hardy", "thomas hardy"),
     ("Rudyard Kipling", "rudyard kipling"),
     ("Robert Louis Stevenson", "robert louis stevenson"),
     ("Louisa May Alcott", "louisa may alcott"),
     ("Nathaniel Hawthorne", "nathaniel hawthorne"),
-    ("Walt Whitman", "walt whitman"),
     ("Henry James", "henry james"),
     ("Joseph Conrad", "joseph conrad"),
     ("Stephen King", "stephen king"),
@@ -60,13 +56,11 @@ AUTHOR_POOL = [
     ("Kurt Vonnegut", "kurt vonnegut"),
     ("Toni Morrison", "toni morrison"),
     ("Gabriel Garcia Marquez", "gabriel garcia marquez"),
-    ("Haruki Murakami", "haruki murakami"),
     ("F. Scott Fitzgerald", "f scott fitzgerald"),
     ("James Joyce", "james joyce"),
     ("Albert Camus", "albert camus"),
     ("Aldous Huxley", "aldous huxley"),
     ("George Bernard Shaw", "george bernard shaw"),
-    ("Anton Chekhov", "anton chekhov"),
     ("Henrik Ibsen", "henrik ibsen"),
     ("Tennessee Williams", "tennessee williams"),
     ("Samuel Beckett", "samuel beckett"),
@@ -78,13 +72,10 @@ AUTHOR_POOL = [
     ("Neil Gaiman", "neil gaiman"),
     ("Terry Pratchett", "terry pratchett"),
     ("Margaret Atwood", "margaret atwood"),
-    ("Octavia Butler", "octavia butler"),
     ("Kazuo Ishiguro", "kazuo ishiguro"),
     ("John Steinbeck", "john steinbeck"),
     ("William Faulkner", "william faulkner"),
     ("Ralph Waldo Emerson", "ralph waldo emerson"),
-    ("Emily Dickinson", "emily dickinson"),
-    ("Rabindranath Tagore", "rabindranath tagore"),
     ("Jorge Luis Borges", "jorge luis borges"),
     ("Italo Calvino", "italo calvino"),
     ("Umberto Eco", "umberto eco"),
@@ -192,6 +183,10 @@ class OpenLibraryAuthorEditionsTemplate(QuestionTemplate):
         if not search_query:
             search_query = f'author:"{author_query}"'
 
+        # NOTE: author_editions does NOT use allow_unsorted_fallback=True because
+        # the start_url already navigates the agent to the correct sorted page.
+        # The new engagement templates (96-98) enable it because the agent may
+        # independently search without specifying sort order.
         data = find_author_search_entry(
             collected, search_query=search_query, sort=sort,
         )
