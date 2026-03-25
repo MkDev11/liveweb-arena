@@ -2,8 +2,8 @@
 
 RL-friendly design:
 - Requires searching for an author and scanning multiple results
-- Dynamic data: want_to_read counts change continuously
-- Large entity pool: 61 authors × 2 extrema × 1 metric × 5 result counts = 610 variants
+- Dynamic data: want_to_read counts and ratings change continuously
+- Large entity pool: 56 authors × (highest×2 + lowest×1) metrics × 6 result counts = 1,008 variants
 - Computation required: must compare values across N books to find extremum
 """
 
@@ -37,9 +37,14 @@ class ExtremaType(Enum):
 class EngagementMetric(Enum):
     """Reader engagement metrics confirmed visible on search result pages."""
     WANT_TO_READ = ("want_to_read_count", "want-to-read count")
+    RATINGS_COUNT = ("ratings_count", "number of ratings")
 
 
-RESULT_COUNTS = [3, 5, 7, 10, 15]
+# ratings_count is excluded from LOWEST extrema because the OL API omits
+# the field for unrated works; missing-as-zero would always "win" lowest.
+_LOWEST_METRICS = [EngagementMetric.WANT_TO_READ]
+
+RESULT_COUNTS = [3, 5, 7, 10, 12, 15]
 
 PATTERNS = {
     ExtremaType.HIGHEST: [
@@ -92,7 +97,8 @@ class OpenLibraryAuthorEngagementExtremaTemplate(QuestionTemplate):
             else rng.choice(RESULT_COUNTS)
         )
         extrema = rng.choice(list(ExtremaType))
-        metric = rng.choice(list(EngagementMetric))
+        pool = _LOWEST_METRICS if extrema == ExtremaType.LOWEST else list(EngagementMetric)
+        metric = rng.choice(pool)
 
         search_query = f'author:"{author_query}"'
         pattern = rng.choice(PATTERNS[extrema])

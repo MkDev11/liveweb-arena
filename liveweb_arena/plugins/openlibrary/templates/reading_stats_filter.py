@@ -2,8 +2,8 @@
 
 RL-friendly design:
 - Requires searching for an author and scanning engagement metrics per book
-- Dynamic data: want_to_read counts change continuously
-- Large entity pool: 61 authors × 1 metric × 4 thresholds × 3 result counts = 732 variants
+- Dynamic data: want_to_read counts and ratings change continuously
+- Large entity pool: 56 authors × 2 metrics × 4 thresholds × 3 result counts = 1,344 variants
 - Counting task: agent must check each book against a threshold (no single-sort shortcut)
 """
 
@@ -31,10 +31,12 @@ from .common import find_author_search_entry, get_collected_data, safe_metric_va
 class ReaderMetric(Enum):
     """Reader engagement metrics with per-metric thresholds."""
     WANT_TO_READ = ("want_to_read_count", "people who want to read them")
+    RATINGS_COUNT = ("ratings_count", "ratings")
 
 
 THRESHOLDS: Dict[ReaderMetric, List[int]] = {
     ReaderMetric.WANT_TO_READ: [100, 200, 500, 1000],
+    ReaderMetric.RATINGS_COUNT: [30, 50, 100, 200],
 }
 
 RESULT_COUNTS = [5, 10, 15]

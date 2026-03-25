@@ -89,8 +89,10 @@ def test_engagement_extrema_generate(seed):
     assert "openlibrary.org" in q.start_url
     assert q.template_name == "openlibrary_author_engagement_extrema"
     assert q.validation_info["extrema"] in {"highest", "lowest"}
-    assert q.validation_info["metric"] == "want_to_read_count"
-    assert q.validation_info["work_count"] in {3, 5, 7, 10, 15}
+    assert q.validation_info["metric"] in {
+        "want_to_read_count", "ratings_count",
+    }
+    assert q.validation_info["work_count"] in {3, 5, 7, 10, 12, 15}
     assert "q=author%3A%22" in q.start_url
     assert "sort=editions" in q.start_url
 
@@ -102,7 +104,9 @@ def test_author_comparison_generate(seed):
     assert "openlibrary.org" in q.start_url
     assert q.template_name == "openlibrary_author_comparison"
     assert q.validation_info["author_a_name"] != q.validation_info["author_b_name"]
-    assert q.validation_info["metric"] == "want_to_read_count"
+    assert q.validation_info["metric"] in {
+        "want_to_read_count", "ratings_count",
+    }
     assert q.validation_info["work_count"] in {3, 5}
 
 
@@ -112,7 +116,9 @@ def test_reading_stats_filter_generate(seed):
     assert q.question_text
     assert "openlibrary.org" in q.start_url
     assert q.template_name == "openlibrary_reading_stats_filter"
-    assert q.validation_info["metric"] == "want_to_read_count"
+    assert q.validation_info["metric"] in {
+        "want_to_read_count", "ratings_count",
+    }
     assert q.validation_info["work_count"] in {5, 10, 15}
     assert isinstance(q.validation_info["threshold"], int)
 
@@ -133,6 +139,25 @@ def test_author_comparison_position_swap_occurs():
         q = tmpl.generate(seed)
         pairs.add((q.validation_info["author_a_name"], q.validation_info["author_b_name"]))
     assert len(pairs) > 10, "Position bias: too few unique ordered pairs"
+
+
+def test_extrema_lowest_excludes_ratings_count():
+    """ratings_count is excluded from lowest extrema to avoid missing-as-zero bias."""
+    tmpl = OpenLibraryAuthorEngagementExtremaTemplate()
+    lowest_metrics = set()
+    highest_metrics = set()
+    for seed in range(200):
+        q = tmpl.generate(seed)
+        if q.validation_info["extrema"] == "lowest":
+            lowest_metrics.add(q.validation_info["metric"])
+        else:
+            highest_metrics.add(q.validation_info["metric"])
+    assert lowest_metrics == {"want_to_read_count"}, (
+        f"lowest should only use want_to_read_count, got {lowest_metrics}"
+    )
+    assert "ratings_count" in highest_metrics, (
+        "highest should include ratings_count"
+    )
 
 
 # ── 3. author_engagement_extrema GT behavior ──────────────────────────
@@ -803,17 +828,17 @@ def test_cache_source_is_openlibrary(cls):
 
 def test_engagement_extrema_metrics_use_confirmed_visible_fields():
     metric_names = {m.value[0] for m in EngagementMetric}
-    assert metric_names == {"want_to_read_count"}
+    assert metric_names == {"want_to_read_count", "ratings_count"}
 
 
 def test_author_comparison_metrics_use_confirmed_visible_fields():
     metric_names = {m.value[0] for m in AuthorMetric}
-    assert metric_names == {"want_to_read_count"}
+    assert metric_names == {"want_to_read_count", "ratings_count"}
 
 
 def test_reading_filter_metrics_use_confirmed_visible_fields():
     metric_names = {m.value[0] for m in ReaderMetric}
-    assert metric_names == {"want_to_read_count"}
+    assert metric_names == {"want_to_read_count", "ratings_count"}
 
 
 def test_all_new_templates_reuse_author_pool():

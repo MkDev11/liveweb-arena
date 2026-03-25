@@ -19,7 +19,7 @@ from liveweb_arena.core.validators.base import (
 from .common import find_author_search_entry, get_collected_data, parse_numeric
 
 AUTHOR_POOL = [
-    # --- Original pool (19) ---
+    # --- Original pool (17) ---
     ("Charles Dickens", "charles dickens"),
     ("Jane Austen", "jane austen"),
     ("William Shakespeare", "william shakespeare"),
@@ -35,29 +35,25 @@ AUTHOR_POOL = [
     ("Arthur Conan Doyle", "arthur conan doyle"),
     ("Mary Shelley", "mary shelley"),
     ("Franz Kafka", "franz kafka"),
-    ("Herman Melville", "herman melville"),
     ("Victor Hugo", "victor hugo"),
     ("Miguel de Cervantes", "miguel de cervantes"),
     ("Alexandre Dumas", "alexandre dumas"),
-    # --- Expanded pool (42) ---
+    # --- Expanded pool (39) ---
     ("Thomas Hardy", "thomas hardy"),
     ("Rudyard Kipling", "rudyard kipling"),
     ("Robert Louis Stevenson", "robert louis stevenson"),
     ("Louisa May Alcott", "louisa may alcott"),
-    ("Nathaniel Hawthorne", "nathaniel hawthorne"),
     ("Henry James", "henry james"),
     ("Joseph Conrad", "joseph conrad"),
     ("Stephen King", "stephen king"),
     ("J.K. Rowling", "j k rowling"),
     ("Roald Dahl", "roald dahl"),
-    ("Philip K. Dick", "philip k dick"),
     ("Isaac Asimov", "isaac asimov"),
     ("Ray Bradbury", "ray bradbury"),
     ("Kurt Vonnegut", "kurt vonnegut"),
     ("Toni Morrison", "toni morrison"),
     ("Gabriel Garcia Marquez", "gabriel garcia marquez"),
     ("F. Scott Fitzgerald", "f scott fitzgerald"),
-    ("James Joyce", "james joyce"),
     ("Albert Camus", "albert camus"),
     ("Aldous Huxley", "aldous huxley"),
     ("George Bernard Shaw", "george bernard shaw"),
@@ -75,7 +71,6 @@ AUTHOR_POOL = [
     ("Kazuo Ishiguro", "kazuo ishiguro"),
     ("John Steinbeck", "john steinbeck"),
     ("William Faulkner", "william faulkner"),
-    ("Ralph Waldo Emerson", "ralph waldo emerson"),
     ("Jorge Luis Borges", "jorge luis borges"),
     ("Italo Calvino", "italo calvino"),
     ("Umberto Eco", "umberto eco"),

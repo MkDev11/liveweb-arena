@@ -3,7 +3,7 @@
 RL-friendly design:
 - Requires TWO separate author searches and cross-page comparison
 - Dynamic data: engagement metrics change continuously as users interact
-- Large entity pool: C(61,2)×1 metric×2 result counts = 3,660 variants
+- Large entity pool: C(56,2)×2 metrics×2 result counts = 6,160 variants
 - Computation required: sum metric across N books for each author, compare
 """
 
@@ -31,6 +31,7 @@ from .common import find_author_search_entry, get_collected_data, safe_metric_va
 class AuthorMetric(Enum):
     """Engagement metrics for cross-author comparison."""
     WANT_TO_READ = ("want_to_read_count", "total want-to-read count")
+    RATINGS_COUNT = ("ratings_count", "total number of ratings")
 
 
 RESULT_COUNTS = [3, 5]
