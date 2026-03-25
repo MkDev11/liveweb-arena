@@ -53,6 +53,18 @@ def parse_numeric(value: Any) -> Optional[float]:
     return None
 
 
+def safe_metric_value(work: Dict[str, Any], metric: str) -> float:
+    """Read an engagement metric from a work dict, defaulting to 0.
+
+    The OL API omits count fields when the value is zero and may
+    occasionally store non-numeric placeholders.  Both cases are
+    treated as 0.0 so that callers never encounter ``None``.
+    """
+    raw = work.get(metric)
+    parsed = parse_numeric(raw) if raw is not None else None
+    return parsed if parsed is not None else 0.0
+
+
 def get_collected_data() -> Optional[Dict[str, Dict[str, Any]]]:
     """Get collected API data for PAGE_ONLY templates."""
     collector = get_current_gt_collector()

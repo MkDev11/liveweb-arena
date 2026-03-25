@@ -25,7 +25,7 @@ from liveweb_arena.core.validators.base import (
     register_template,
 )
 from .author_editions import AUTHOR_POOL
-from .common import find_author_search_entry, get_collected_data, parse_numeric
+from .common import find_author_search_entry, get_collected_data, safe_metric_value
 
 
 class ExtremaType(Enum):
@@ -194,11 +194,7 @@ class OpenLibraryAuthorEngagementExtremaTemplate(QuestionTemplate):
             title = work.get("title")
             if not isinstance(title, str):
                 return GroundTruthResult.fail("Work missing title field")
-            # OL API omits count fields when the value is zero; treat
-            # absent metrics as 0 rather than failing.
-            raw = work.get(metric)
-            parsed = parse_numeric(raw) if raw is not None else None
-            value = parsed if parsed is not None else 0.0
+            value = safe_metric_value(work, metric)
             is_better = (
                 best_value is None
                 or (extrema == "highest" and value > best_value)
