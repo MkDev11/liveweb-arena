@@ -24,7 +24,7 @@ from liveweb_arena.core.validators.base import (
     ValidationResult,
     register_template,
 )
-from .author_editions import AUTHOR_POOL
+from .author_editions import ENGAGEMENT_AUTHOR_POOL
 from .common import find_author_search_entry, get_collected_data, safe_metric_value
 
 
@@ -84,7 +84,7 @@ class OpenLibraryReadingStatsFilterTemplate(QuestionTemplate):
             else rng.choice(metrics)
         )
 
-        author_name, author_query = rng.choice(AUTHOR_POOL)
+        author_name, author_query = rng.choice(ENGAGEMENT_AUTHOR_POOL)
         count = rng.choice(RESULT_COUNTS)
         threshold = rng.choice(THRESHOLDS[metric])
 

@@ -15,7 +15,7 @@ from liveweb_arena.plugins.openlibrary.templates.author_engagement_extrema impor
     EngagementMetric,
     OpenLibraryAuthorEngagementExtremaTemplate,
 )
-from liveweb_arena.plugins.openlibrary.templates.author_editions import AUTHOR_POOL
+from liveweb_arena.plugins.openlibrary.templates.author_editions import ENGAGEMENT_AUTHOR_POOL
 from liveweb_arena.plugins.openlibrary.templates.common import (
     extract_author_filter,
     find_author_search_entry,
@@ -422,13 +422,13 @@ def test_reading_filter_metrics_use_confirmed_visible_fields():
     assert metric_names == {"want_to_read_count", "ratings_count"}
 
 
-def test_all_new_templates_reuse_author_pool():
-    from liveweb_arena.plugins.openlibrary.templates.author_engagement_extrema import AUTHOR_POOL as EX_POOL
-    from liveweb_arena.plugins.openlibrary.templates.author_comparison import AUTHOR_POOL as CMP_POOL
-    from liveweb_arena.plugins.openlibrary.templates.reading_stats_filter import AUTHOR_POOL as FLT_POOL
-    assert EX_POOL is AUTHOR_POOL
-    assert CMP_POOL is AUTHOR_POOL
-    assert FLT_POOL is AUTHOR_POOL
+def test_all_new_templates_reuse_engagement_pool():
+    from liveweb_arena.plugins.openlibrary.templates.author_engagement_extrema import ENGAGEMENT_AUTHOR_POOL as EX_POOL
+    from liveweb_arena.plugins.openlibrary.templates.author_comparison import ENGAGEMENT_AUTHOR_POOL as CMP_POOL
+    from liveweb_arena.plugins.openlibrary.templates.reading_stats_filter import ENGAGEMENT_AUTHOR_POOL as FLT_POOL
+    assert EX_POOL is ENGAGEMENT_AUTHOR_POOL
+    assert CMP_POOL is ENGAGEMENT_AUTHOR_POOL
+    assert FLT_POOL is ENGAGEMENT_AUTHOR_POOL
 
 
 def test_all_validation_info_values_are_serializable():
@@ -449,15 +449,15 @@ def test_all_validation_info_values_are_serializable():
 # ── 9. Author pool invariants ─────────────────────────────────────────
 
 
-def test_author_pool_size():
-    assert len(AUTHOR_POOL) == 81, f"Expected 81 authors, got {len(AUTHOR_POOL)}"
+def test_engagement_author_pool_size():
+    assert len(ENGAGEMENT_AUTHOR_POOL) == 81, f"Expected 81 authors, got {len(ENGAGEMENT_AUTHOR_POOL)}"
 
 
-def test_author_pool_no_duplicates():
-    names = [name for name, _ in AUTHOR_POOL]
-    queries = [query for _, query in AUTHOR_POOL]
-    assert len(names) == len(set(names)), "Duplicate author names in AUTHOR_POOL"
-    assert len(queries) == len(set(queries)), "Duplicate author queries in AUTHOR_POOL"
+def test_engagement_author_pool_no_duplicates():
+    names = [name for name, _ in ENGAGEMENT_AUTHOR_POOL]
+    queries = [query for _, query in ENGAGEMENT_AUTHOR_POOL]
+    assert len(names) == len(set(names)), "Duplicate author names in ENGAGEMENT_AUTHOR_POOL"
+    assert len(queries) == len(set(queries)), "Duplicate author queries in ENGAGEMENT_AUTHOR_POOL"
 
 
 def test_extrema_highest_ratings_count_gt():

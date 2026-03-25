@@ -24,7 +24,7 @@ from liveweb_arena.core.validators.base import (
     ValidationResult,
     register_template,
 )
-from .author_editions import AUTHOR_POOL
+from .author_editions import ENGAGEMENT_AUTHOR_POOL
 from .common import find_author_search_entry, get_collected_data, safe_metric_value
 
 
@@ -78,7 +78,7 @@ class OpenLibraryAuthorComparisonTemplate(QuestionTemplate):
             else rng.choice(metrics)
         )
 
-        (name_a, query_a), (name_b, query_b) = rng.sample(AUTHOR_POOL, 2)
+        (name_a, query_a), (name_b, query_b) = rng.sample(ENGAGEMENT_AUTHOR_POOL, 2)
 
         # Randomly swap order to prevent position bias
         if rng.random() > 0.5:

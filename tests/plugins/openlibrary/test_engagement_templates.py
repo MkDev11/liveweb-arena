@@ -81,7 +81,11 @@ def test_engagement_extrema_generate(seed):
     assert q.validation_info["metric"] in {
         "want_to_read_count", "ratings_count",
     }
-    assert q.validation_info["work_count"] in {3, 5, 7, 10, 15, 20, 25}
+    # highest uses RESULT_COUNTS=[3,5,7,10,15,20,25]; lowest uses [3,5,7]
+    if q.validation_info["extrema"] == "lowest":
+        assert q.validation_info["work_count"] in {3, 5, 7}
+    else:
+        assert q.validation_info["work_count"] in {3, 5, 7, 10, 15, 20, 25}
     assert "q=author%3A%22" in q.start_url
     assert "sort=editions" in q.start_url
 

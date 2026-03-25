@@ -3,7 +3,7 @@
 RL-friendly design:
 - Requires searching for an author and scanning multiple results
 - Dynamic data: want_to_read counts and ratings change continuously
-- Large entity pool: 81 authors × (highest×2 + lowest×1) metrics × 7 result counts = 1,701 variants
+- Large entity pool: 81 authors × (highest: 2 metrics × 7 counts + lowest: 1 metric × 3 counts) = 1,377 variants
 - Computation required: must compare values across N books to find extremum
 """
 
@@ -24,7 +24,7 @@ from liveweb_arena.core.validators.base import (
     ValidationResult,
     register_template,
 )
-from .author_editions import AUTHOR_POOL
+from .author_editions import ENGAGEMENT_AUTHOR_POOL
 from .common import find_author_search_entry, get_collected_data, safe_metric_value
 
 
@@ -45,6 +45,11 @@ class EngagementMetric(Enum):
 _LOWEST_METRICS = [EngagementMetric.WANT_TO_READ]
 
 RESULT_COUNTS = [3, 5, 7, 10, 15, 20, 25]
+
+# For lowest extrema, cap work_count to avoid missing-as-zero domination.
+# At work_count >= 10, many authors have missing want_to_read_count entries
+# that coerce to 0, making the GT answer = alphabetically first zero-book.
+_LOWEST_RESULT_COUNTS = [3, 5, 7]
 
 PATTERNS = {
     ExtremaType.HIGHEST: [
@@ -90,13 +95,14 @@ class OpenLibraryAuthorEngagementExtremaTemplate(QuestionTemplate):
     def generate(self, seed: int, variant: Optional[int] = None) -> GeneratedQuestion:
         rng = random.Random(seed)
 
-        author_name, author_query = rng.choice(AUTHOR_POOL)
-        count = (
-            RESULT_COUNTS[variant % len(RESULT_COUNTS)]
-            if variant is not None
-            else rng.choice(RESULT_COUNTS)
-        )
+        author_name, author_query = rng.choice(ENGAGEMENT_AUTHOR_POOL)
         extrema = rng.choice(list(ExtremaType))
+        counts = _LOWEST_RESULT_COUNTS if extrema == ExtremaType.LOWEST else RESULT_COUNTS
+        count = (
+            counts[variant % len(counts)]
+            if variant is not None
+            else rng.choice(counts)
+        )
         pool = _LOWEST_METRICS if extrema == ExtremaType.LOWEST else list(EngagementMetric)
         metric = rng.choice(pool)
 
