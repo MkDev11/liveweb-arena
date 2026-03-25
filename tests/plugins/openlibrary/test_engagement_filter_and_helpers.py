@@ -1,14 +1,4 @@
-"""Tests for reading_stats_filter GT, task registry, helpers, and cross-template consistency.
-
-Split from test_engagement_templates.py to stay under the 500-line file limit.
-
-Covers:
-5. reading_stats_filter GT behavior and edge cases
-6. Task registry wiring (IDs 96, 97, 98)
-7. Shared helper refactoring (common.py)
-8. Cross-template consistency (serialization, GT source, cache source)
-9. Author pool invariants
-"""
+"""Tests: reading_stats_filter GT, registry, helpers, consistency, pool invariants."""
 
 import asyncio
 from typing import Any, Dict, List, Optional
@@ -488,3 +478,21 @@ def test_extrema_highest_ratings_count_gt():
     }))
     assert result.success is True
     assert result.value == "It"
+
+
+def test_extrema_gt_succeeds_with_25_works():
+    """Regression: work_count=25 must succeed when collector fetches ≥25 works."""
+    tmpl = OpenLibraryAuthorEngagementExtremaTemplate()
+    works = [{"key": f"/works/OL{i}W", "rank": i, "title": f"Book {i}",
+              "want_to_read_count": 1000 - i * 10} for i in range(1, 26)]
+    collected = {
+        "ol:search:king": _make_search_entry('author:"stephen king"', "editions", works),
+    }
+    result = _run_gt(collected, tmpl.get_ground_truth({
+        "author_name": "Stephen King", "author_query": "stephen king",
+        "search_query": 'author:"stephen king"', "sort": "editions",
+        "work_count": 25, "extrema": "highest", "metric": "want_to_read_count",
+        "metric_label": "want-to-read count",
+    }))
+    assert result.success is True
+    assert result.value == "Book 1"  # highest want_to_read_count = 990

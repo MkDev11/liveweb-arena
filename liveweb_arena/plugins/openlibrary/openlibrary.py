@@ -60,7 +60,7 @@ class OpenLibraryPlugin(BasePlugin):
             sort = parse_qs(parsed.query).get("sort", [None])[0]
             mode = parse_qs(parsed.query).get("mode", [None])[0]
             if query:
-                return await fetch_search_api_data(query, limit=20, sort=sort, mode=mode)
+                return await fetch_search_api_data(query, limit=25, sort=sort, mode=mode)
             return {}
 
         # Work detail page: /works/OL...W or /works/OL...W/Title
