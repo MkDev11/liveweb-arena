@@ -443,6 +443,30 @@ def test_comparison_missing_metric_treated_as_zero():
     assert result.value == "Stephen King"  # 500 > 0 (missing treated as 0)
 
 
+def test_comparison_non_numeric_metric_causes_gt_failure():
+    """Non-null non-numeric metric values should cause a GT fail via safe_metric_value."""
+    tmpl = OpenLibraryAuthorComparisonTemplate()
+    collected = {
+        "ol:search:king": _make_search_entry('author:"stephen king"', "editions", [
+            {"key": "/works/OL1W", "rank": 1, "title": "It", "want_to_read_count": "N/A"},
+        ]),
+        "ol:search:christie": _make_search_entry('author:"agatha christie"', "editions", [
+            {"key": "/works/OL3W", "rank": 1, "title": "Styles", "want_to_read_count": 100},
+        ]),
+    }
+    result = _run_gt(collected, tmpl.get_ground_truth({
+        "author_a_name": "Stephen King",
+        "author_a_query": "stephen king",
+        "search_query_a": 'author:"stephen king"',
+        "author_b_name": "Agatha Christie",
+        "author_b_query": "agatha christie",
+        "search_query_b": 'author:"agatha christie"',
+        "sort": "editions", "work_count": 1, "metric": "want_to_read_count",
+        "metric_label": "total want-to-read count",
+    }))
+    assert result.success is False
+
+
 # ── 5. reading_stats_filter GT behavior ───────────────────────────────
 
 
@@ -558,6 +582,24 @@ def test_filter_missing_metric_treated_as_zero():
     }))
     assert result.success is True
     assert result.value == "1"  # only The Raven (100) > 50; Annabel Lee (0) is not
+
+
+def test_filter_non_numeric_metric_causes_gt_failure():
+    """Non-null non-numeric metric values should cause a GT fail via safe_metric_value."""
+    tmpl = OpenLibraryReadingStatsFilterTemplate()
+    collected = {
+        "ol:search:poe": _make_search_entry('author:"edgar allan poe"', "editions", [
+            {"key": "/works/OL1W", "rank": 1, "title": "The Raven", "want_to_read_count": "N/A"},
+            {"key": "/works/OL2W", "rank": 2, "title": "Annabel Lee", "want_to_read_count": 100},
+        ]),
+    }
+    result = _run_gt(collected, tmpl.get_ground_truth({
+        "author_name": "Edgar Allan Poe", "author_query": "edgar allan poe",
+        "search_query": 'author:"edgar allan poe"', "sort": "editions",
+        "work_count": 2, "metric": "want_to_read_count",
+        "metric_label": "people who want to read them", "threshold": 50,
+    }))
+    assert result.success is False
 
 
 def test_filter_no_collected_data():

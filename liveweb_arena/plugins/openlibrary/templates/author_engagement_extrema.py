@@ -2,7 +2,7 @@
 
 RL-friendly design:
 - Requires searching for an author and scanning multiple results
-- Dynamic data: want_to_read counts and ratings change continuously
+- Dynamic data: want_to_read counts change continuously
 - Large entity pool: 61 authors × 2 extrema × 1 metric × 5 result counts = 610 variants
 - Computation required: must compare values across N books to find extremum
 """

@@ -2,7 +2,7 @@
 
 RL-friendly design:
 - Requires searching for an author and scanning engagement metrics per book
-- Dynamic data: want_to_read counts and ratings change continuously
+- Dynamic data: want_to_read counts change continuously
 - Large entity pool: 61 authors × 1 metric × 4 thresholds × 3 result counts = 732 variants
 - Counting task: agent must check each book against a threshold (no single-sort shortcut)
 """
