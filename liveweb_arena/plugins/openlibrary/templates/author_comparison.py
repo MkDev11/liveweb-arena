@@ -3,7 +3,7 @@
 RL-friendly design:
 - Requires TWO separate author searches and cross-page comparison
 - Dynamic data: engagement metrics change continuously as users interact
-- Large entity pool: C(56,2)×2 metrics×2 result counts = 6,160 variants
+- Large entity pool: C(81,2)×2 metrics×2 result counts = 12,960 variants
 - Computation required: sum metric across N books for each author, compare
 """
 

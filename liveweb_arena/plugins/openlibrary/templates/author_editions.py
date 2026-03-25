@@ -19,7 +19,7 @@ from liveweb_arena.core.validators.base import (
 from .common import find_author_search_entry, get_collected_data, parse_numeric
 
 AUTHOR_POOL = [
-    # --- Original pool (17) ---
+    # --- Original pool (18) ---
     ("Charles Dickens", "charles dickens"),
     ("Jane Austen", "jane austen"),
     ("William Shakespeare", "william shakespeare"),
@@ -38,7 +38,7 @@ AUTHOR_POOL = [
     ("Victor Hugo", "victor hugo"),
     ("Miguel de Cervantes", "miguel de cervantes"),
     ("Alexandre Dumas", "alexandre dumas"),
-    # --- Expanded pool (39) ---
+    # --- Expanded pool (38) ---
     ("Thomas Hardy", "thomas hardy"),
     ("Rudyard Kipling", "rudyard kipling"),
     ("Robert Louis Stevenson", "robert louis stevenson"),
@@ -77,6 +77,32 @@ AUTHOR_POOL = [
     ("Paulo Coelho", "paulo coelho"),
     ("Isabel Allende", "isabel allende"),
     ("Chimamanda Ngozi Adichie", "chimamanda ngozi adichie"),
+    # --- Anti-memorization expansion (25) ---
+    ("Charlotte Bronte", "charlotte bronte"),
+    ("Jack London", "jack london"),
+    ("Daniel Defoe", "daniel defoe"),
+    ("C.S. Lewis", "c s lewis"),
+    ("James Baldwin", "james baldwin"),
+    ("Sylvia Plath", "sylvia plath"),
+    ("Maya Angelou", "maya angelou"),
+    ("Zora Neale Hurston", "zora neale hurston"),
+    ("Gustave Flaubert", "gustave flaubert"),
+    ("Bram Stoker", "bram stoker"),
+    ("Lewis Carroll", "lewis carroll"),
+    ("Beatrix Potter", "beatrix potter"),
+    ("Enid Blyton", "enid blyton"),
+    ("Judy Blume", "judy blume"),
+    ("Beverly Cleary", "beverly cleary"),
+    ("Philip Roth", "philip roth"),
+    ("Milan Kundera", "milan kundera"),
+    ("Daphne du Maurier", "daphne du maurier"),
+    ("Wilkie Collins", "wilkie collins"),
+    ("Thomas Mann", "thomas mann"),
+    ("Hermann Hesse", "hermann hesse"),
+    ("E.M. Forster", "e m forster"),
+    ("Somerset Maugham", "somerset maugham"),
+    ("Anne Rice", "anne rice"),
+    ("Dan Brown", "dan brown"),
 ]
 
 RESULT_COUNTS = [3, 5, 7, 10]

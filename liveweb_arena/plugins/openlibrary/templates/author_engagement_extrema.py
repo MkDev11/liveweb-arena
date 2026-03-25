@@ -3,7 +3,7 @@
 RL-friendly design:
 - Requires searching for an author and scanning multiple results
 - Dynamic data: want_to_read counts and ratings change continuously
-- Large entity pool: 56 authors × (highest×2 + lowest×1) metrics × 6 result counts = 1,008 variants
+- Large entity pool: 81 authors × (highest×2 + lowest×1) metrics × 7 result counts = 1,701 variants
 - Computation required: must compare values across N books to find extremum
 """
 
@@ -44,7 +44,7 @@ class EngagementMetric(Enum):
 # the field for unrated works; missing-as-zero would always "win" lowest.
 _LOWEST_METRICS = [EngagementMetric.WANT_TO_READ]
 
-RESULT_COUNTS = [3, 5, 7, 10, 12, 15]
+RESULT_COUNTS = [3, 5, 7, 10, 15, 20, 25]
 
 PATTERNS = {
     ExtremaType.HIGHEST: [
