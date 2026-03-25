@@ -11,7 +11,7 @@ Covers:
 """
 
 import asyncio
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pytest
 
@@ -55,7 +55,7 @@ def _run_gt(data: Dict[str, Dict[str, Any]], coro):
 
 
 def _make_search_entry(
-    query: str, sort: str, works: List[Dict[str, Any]],
+    query: str, sort: Optional[str], works: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
     return {
         "query": query,
@@ -236,7 +236,8 @@ def test_extrema_not_collected_wrong_author():
     assert result.is_data_not_collected()
 
 
-def test_extrema_missing_metric_fails():
+def test_extrema_missing_metric_treated_as_zero():
+    """OL API omits count fields when the value is zero; GT treats absent as 0."""
     tmpl = OpenLibraryAuthorEngagementExtremaTemplate()
     collected = {
         "ol:search:dickens": _make_search_entry('author:"charles dickens"', "editions", [
@@ -250,7 +251,8 @@ def test_extrema_missing_metric_fails():
         "work_count": 2, "extrema": "highest", "metric": "want_to_read_count",
         "metric_label": "want-to-read count",
     }))
-    assert result.success is False
+    assert result.success is True
+    assert result.value == "Oliver Twist"  # 100 > 0 (missing treated as 0)
 
 
 def test_extrema_no_collected_data():
@@ -403,7 +405,8 @@ def test_comparison_no_collected_data():
     assert result.success is False
 
 
-def test_comparison_missing_metric_fails():
+def test_comparison_missing_metric_treated_as_zero():
+    """OL API omits count fields when the value is zero; GT treats absent as 0."""
     tmpl = OpenLibraryAuthorComparisonTemplate()
     collected = {
         "ol:search:king": _make_search_entry('author:"stephen king"', "editions", [
@@ -423,7 +426,8 @@ def test_comparison_missing_metric_fails():
         "sort": "editions", "work_count": 1, "metric": "ratings_count",
         "metric_label": "total number of ratings",
     }))
-    assert result.success is False
+    assert result.success is True
+    assert result.value == "Stephen King"  # 500 > 0 (missing treated as 0)
 
 
 # ── 5. reading_stats_filter GT behavior ───────────────────────────────
@@ -524,7 +528,8 @@ def test_filter_not_collected_wrong_author():
     assert result.is_data_not_collected()
 
 
-def test_filter_missing_metric_fails():
+def test_filter_missing_metric_treated_as_zero():
+    """OL API omits count fields when the value is zero; GT treats absent as 0."""
     tmpl = OpenLibraryReadingStatsFilterTemplate()
     collected = {
         "ol:search:poe": _make_search_entry('author:"edgar allan poe"', "editions", [
@@ -538,7 +543,8 @@ def test_filter_missing_metric_fails():
         "work_count": 2, "metric": "want_to_read_count",
         "metric_label": "people who want to read them", "threshold": 50,
     }))
-    assert result.success is False
+    assert result.success is True
+    assert result.value == "1"  # only The Raven (100) > 50; Annabel Lee (0) is not
 
 
 def test_filter_no_collected_data():

@@ -185,12 +185,10 @@ class OpenLibraryReadingStatsFilterTemplate(QuestionTemplate):
 
         match_count = 0
         for work in top_n:
-            title = work.get("title", "<unknown>")
-            value = parse_numeric(work.get(metric))
-            if value is None:
-                return GroundTruthResult.fail(
-                    f"Missing '{metric}' for work '{title}'"
-                )
+            # OL API omits count fields when the value is zero; treat
+            # absent metrics as 0 rather than failing.
+            raw = work.get(metric)
+            value = parse_numeric(raw) if raw is not None else 0.0
             if int(value) > threshold:
                 match_count += 1
 
