@@ -113,7 +113,8 @@ def test_filter_exact_threshold_not_counted():
     assert result.value == "1"  # only 101 > 100, not 100 > 100
 
 
-def test_filter_matches_unsorted_query_when_sort_not_collected():
+def test_filter_rejects_unsorted_data():
+    """GT must require sort=editions; unsorted data should produce not_collected."""
     tmpl = OpenLibraryReadingStatsFilterTemplate()
     collected = {
         "ol:search:king": _make_search_entry("stephen king", None, [
@@ -130,8 +131,8 @@ def test_filter_matches_unsorted_query_when_sort_not_collected():
         "work_count": 5, "metric": "want_to_read_count",
         "metric_label": "people who want to read them", "threshold": 200,
     }))
-    assert result.success is True
-    assert result.value == "3"
+    assert result.success is False
+    assert result.is_data_not_collected()
 
 
 def test_filter_not_collected_wrong_author():
@@ -151,8 +152,8 @@ def test_filter_not_collected_wrong_author():
     assert result.is_data_not_collected()
 
 
-def test_filter_missing_metric_treated_as_zero():
-    """OL API omits count fields when the value is zero; GT treats absent as 0."""
+def test_filter_missing_wtr_treated_as_zero():
+    """OL API omits want_to_read_count when the value is zero; GT treats absent as 0."""
     tmpl = OpenLibraryReadingStatsFilterTemplate()
     collected = {
         "ol:search:poe": _make_search_entry('author:"edgar allan poe"', "editions", [
@@ -168,6 +169,24 @@ def test_filter_missing_metric_treated_as_zero():
     }))
     assert result.success is True
     assert result.value == "1"  # only The Raven (100) > 50; Annabel Lee (0) is not
+
+
+def test_filter_missing_ratings_count_fails_gt():
+    """Missing ratings_count should cause GT failure (not default to 0)."""
+    tmpl = OpenLibraryReadingStatsFilterTemplate()
+    collected = {
+        "ol:search:poe": _make_search_entry('author:"edgar allan poe"', "editions", [
+            {"key": "/works/OL1W", "rank": 1, "title": "The Raven", "ratings_count": 100},
+            {"key": "/works/OL2W", "rank": 2, "title": "Annabel Lee"},
+        ]),
+    }
+    result = _run_gt(collected, tmpl.get_ground_truth({
+        "author_name": "Edgar Allan Poe", "author_query": "edgar allan poe",
+        "search_query": 'author:"edgar allan poe"', "sort": "editions",
+        "work_count": 2, "metric": "ratings_count",
+        "metric_label": "ratings", "threshold": 50,
+    }))
+    assert result.success is False
 
 
 def test_filter_non_numeric_metric_causes_gt_failure():
@@ -206,7 +225,7 @@ def test_filter_ratings_count_gt():
         "ol:search:king": _make_search_entry('author:"stephen king"', "editions", [
             {"key": "/works/OL1W", "rank": 1, "title": "It", "ratings_count": 500},
             {"key": "/works/OL2W", "rank": 2, "title": "Carrie", "ratings_count": 80},
-            {"key": "/works/OL3W", "rank": 3, "title": "Misery"},
+            {"key": "/works/OL3W", "rank": 3, "title": "Misery", "ratings_count": 20},
         ]),
     }
     result = _run_gt(collected, tmpl.get_ground_truth({
@@ -216,7 +235,7 @@ def test_filter_ratings_count_gt():
         "metric_label": "ratings", "threshold": 50,
     }))
     assert result.success is True
-    assert result.value == "2"  # It(500) and Carrie(80) > 50; Misery(0) is not
+    assert result.value == "2"  # It(500) and Carrie(80) > 50; Misery(20) is not
 
 
 # ── 6. Task registry ──────────────────────────────────────────────────
@@ -383,7 +402,7 @@ def test_comparison_matches_when_second_author_uses_plain_text():
         "metric_label": "total want-to-read count",
     }))
     assert result.success is True
-    assert result.value == "Stephen King"
+    assert result.value == "400"  # abs(500 - 100)
 
 
 # ── 8. Cross-template consistency ─────────────────────────────────────

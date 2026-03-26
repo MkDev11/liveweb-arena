@@ -194,7 +194,8 @@ def test_extrema_finds_lowest_want_to_read():
     assert result.value == "Sense and Sensibility"
 
 
-def test_extrema_matches_unsorted_query_when_sort_not_collected():
+def test_extrema_rejects_unsorted_data():
+    """GT must require sort=editions; unsorted data should produce not_collected."""
     tmpl = OpenLibraryAuthorEngagementExtremaTemplate()
     collected = {
         "ol:search:austen": _make_search_entry("jane austen", None, [
@@ -209,8 +210,8 @@ def test_extrema_matches_unsorted_query_when_sort_not_collected():
         "work_count": 3, "extrema": "lowest", "metric": "want_to_read_count",
         "metric_label": "want-to-read count",
     }))
-    assert result.success is True
-    assert result.value == "Sense and Sensibility"
+    assert result.success is False
+    assert result.is_data_not_collected()
 
 
 def test_extrema_tie_breaks_alphabetically():
@@ -248,8 +249,8 @@ def test_extrema_not_collected_wrong_author():
     assert result.is_data_not_collected()
 
 
-def test_extrema_missing_metric_treated_as_zero():
-    """OL API omits count fields when the value is zero; GT treats absent as 0."""
+def test_extrema_missing_wtr_treated_as_zero():
+    """OL API omits want_to_read_count when the value is zero; GT treats absent as 0."""
     tmpl = OpenLibraryAuthorEngagementExtremaTemplate()
     collected = {
         "ol:search:dickens": _make_search_entry('author:"charles dickens"', "editions", [
@@ -264,7 +265,25 @@ def test_extrema_missing_metric_treated_as_zero():
         "metric_label": "want-to-read count",
     }))
     assert result.success is True
-    assert result.value == "Oliver Twist"  # 100 > 0 (missing treated as 0)
+    assert result.value == "Oliver Twist"  # 100 > 0 (missing wtr treated as 0)
+
+
+def test_extrema_missing_ratings_count_fails_gt():
+    """Missing ratings_count should cause GT failure (not default to 0)."""
+    tmpl = OpenLibraryAuthorEngagementExtremaTemplate()
+    collected = {
+        "ol:search:dickens": _make_search_entry('author:"charles dickens"', "editions", [
+            {"key": "/works/OL1W", "rank": 1, "title": "Oliver Twist", "ratings_count": 100},
+            {"key": "/works/OL2W", "rank": 2, "title": "David Copperfield"},
+        ]),
+    }
+    result = _run_gt(collected, tmpl.get_ground_truth({
+        "author_name": "Charles Dickens", "author_query": "charles dickens",
+        "search_query": 'author:"charles dickens"', "sort": "editions",
+        "work_count": 2, "extrema": "highest", "metric": "ratings_count",
+        "metric_label": "number of ratings",
+    }))
+    assert result.success is False
 
 
 def test_extrema_non_numeric_metric_causes_gt_failure():
@@ -300,7 +319,7 @@ def test_extrema_no_collected_data():
 # ── 4. author_comparison GT behavior ──────────────────────────────────
 
 
-def test_comparison_picks_higher_total():
+def test_comparison_returns_absolute_difference():
     tmpl = OpenLibraryAuthorComparisonTemplate()
     collected = {
         "ol:search:king": _make_search_entry('author:"stephen king"', "editions", [
@@ -323,10 +342,10 @@ def test_comparison_picks_higher_total():
         "metric_label": "total want-to-read count",
     }))
     assert result.success is True
-    assert result.value == "Stephen King"  # 700 > 150
+    assert result.value == "550"  # abs(700 - 150)
 
 
-def test_comparison_reverse_winner():
+def test_comparison_difference_is_commutative():
     tmpl = OpenLibraryAuthorComparisonTemplate()
     collected = {
         "ol:search:king": _make_search_entry('author:"stephen king"', "editions", [
@@ -349,10 +368,10 @@ def test_comparison_reverse_winner():
         "metric_label": "total want-to-read count",
     }))
     assert result.success is True
-    assert result.value == "Agatha Christie"  # 1100 > 150
+    assert result.value == "950"  # abs(150 - 1100)
 
 
-def test_comparison_tie_breaks_alphabetically():
+def test_comparison_equal_totals_yield_zero_difference():
     tmpl = OpenLibraryAuthorComparisonTemplate()
     collected = {
         "ol:search:king": _make_search_entry('author:"stephen king"', "editions", [
@@ -373,10 +392,11 @@ def test_comparison_tie_breaks_alphabetically():
         "metric_label": "total want-to-read count",
     }))
     assert result.success is True
-    assert result.value == "Agatha Christie"  # alphabetically earlier
+    assert result.value == "0"
 
 
-def test_comparison_matches_unsorted_queries_when_sort_not_collected():
+def test_comparison_rejects_unsorted_data():
+    """GT must require sort=editions; unsorted data should produce not_collected."""
     tmpl = OpenLibraryAuthorComparisonTemplate()
     collected = {
         "ol:search:king": _make_search_entry("stephen king", None, [
@@ -398,8 +418,8 @@ def test_comparison_matches_unsorted_queries_when_sort_not_collected():
         "sort": "editions", "work_count": 2, "metric": "want_to_read_count",
         "metric_label": "total want-to-read count",
     }))
-    assert result.success is True
-    assert result.value == "Stephen King"
+    assert result.success is False
+    assert result.is_data_not_collected()
 
 
 def test_comparison_not_collected_missing_author():
@@ -436,8 +456,8 @@ def test_comparison_no_collected_data():
     assert result.success is False
 
 
-def test_comparison_missing_metric_treated_as_zero():
-    """OL API omits count fields when the value is zero; GT treats absent as 0."""
+def test_comparison_missing_wtr_treated_as_zero():
+    """OL API omits want_to_read_count when the value is zero; GT treats absent as 0."""
     tmpl = OpenLibraryAuthorComparisonTemplate()
     collected = {
         "ol:search:king": _make_search_entry('author:"stephen king"', "editions", [
@@ -458,7 +478,31 @@ def test_comparison_missing_metric_treated_as_zero():
         "metric_label": "total want-to-read count",
     }))
     assert result.success is True
-    assert result.value == "Stephen King"  # 500 > 0 (missing treated as 0)
+    assert result.value == "500"  # abs(500 - 0)
+
+
+def test_comparison_missing_ratings_count_fails_gt():
+    """Missing ratings_count should cause GT failure (not default to 0)."""
+    tmpl = OpenLibraryAuthorComparisonTemplate()
+    collected = {
+        "ol:search:king": _make_search_entry('author:"stephen king"', "editions", [
+            {"key": "/works/OL1W", "rank": 1, "title": "It", "ratings_count": 500},
+        ]),
+        "ol:search:christie": _make_search_entry('author:"agatha christie"', "editions", [
+            {"key": "/works/OL3W", "rank": 1, "title": "Styles"},
+        ]),
+    }
+    result = _run_gt(collected, tmpl.get_ground_truth({
+        "author_a_name": "Stephen King",
+        "author_a_query": "stephen king",
+        "search_query_a": 'author:"stephen king"',
+        "author_b_name": "Agatha Christie",
+        "author_b_query": "agatha christie",
+        "search_query_b": 'author:"agatha christie"',
+        "sort": "editions", "work_count": 1, "metric": "ratings_count",
+        "metric_label": "total number of ratings",
+    }))
+    assert result.success is False
 
 
 def test_comparison_non_numeric_metric_causes_gt_failure():

@@ -53,17 +53,30 @@ def parse_numeric(value: Any) -> Optional[float]:
     return None
 
 
-def safe_metric_value(work: Dict[str, Any], metric: str) -> float:
-    """Read an engagement metric from a work dict, defaulting to 0.
+_ZERO_DEFAULTABLE_METRICS = frozenset({"want_to_read_count"})
 
-    The OL API omits count fields when the value is zero, so absent
-    values are treated as ``0.0``.  Non-null values that cannot be
-    parsed as a number indicate unexpected data and cause a
+
+def safe_metric_value(work: Dict[str, Any], metric: str) -> float:
+    """Read an engagement metric from a work dict.
+
+    For metrics in ``_ZERO_DEFAULTABLE_METRICS`` (currently only
+    ``want_to_read_count``), absent values are treated as ``0.0``
+    because the OL API omits that field when no one has marked the
+    book.  For all other metrics (e.g. ``ratings_count``), absence
+    raises ``ValueError`` — the data is too sparse to assume zero
+    is semantically correct.
+
+    Non-null values that cannot be parsed as a number always raise
     ``ValueError`` so callers can surface a proper GT failure.
     """
     raw = work.get(metric)
     if raw is None:
-        return 0.0
+        if metric in _ZERO_DEFAULTABLE_METRICS:
+            return 0.0
+        title = work.get("title", "<unknown>")
+        raise ValueError(
+            f"Missing '{metric}' for work '{title}'"
+        )
     parsed = parse_numeric(raw)
     if parsed is None:
         title = work.get("title", "<unknown>")

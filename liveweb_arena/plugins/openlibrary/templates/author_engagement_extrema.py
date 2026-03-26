@@ -3,8 +3,10 @@
 RL-friendly design:
 - Requires searching for an author and scanning multiple results
 - Dynamic data: want_to_read counts and ratings change continuously
-- Large entity pool: 81 authors × (highest: 2 metrics × 7 counts + lowest: 1 metric × 3 counts) = 1,377 variants
+- Entity pool: 81 authors × (highest: 2 metrics × 7 counts + lowest: 1 metric × 3 counts) = 1,377 variants
 - Computation required: must compare values across N books to find extremum
+- Strict sort matching: GT only accepts data from sort=editions pages (no unsorted fallback)
+- Missing ratings_count causes GT failure; only want_to_read_count defaults to 0 when absent
 """
 
 import random
@@ -179,7 +181,6 @@ class OpenLibraryAuthorEngagementExtremaTemplate(QuestionTemplate):
             collected,
             search_query=search_query,
             sort=sort,
-            allow_unsorted_fallback=True,
         )
         if data is None:
             ol_keys = [k for k in collected if k.startswith("ol:")][:5]

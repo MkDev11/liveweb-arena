@@ -186,7 +186,8 @@ class TaskRegistry:
         [85, 86, 87, 88],
         # Version 6: ArXiv templates
         [90, 91, 92, 94, 95],
-        # Version 7: Open Library engagement & comparison templates
+        # Version 7: Open Library engagement & comparison templates (PR #13)
+        # NOTE: PR #14 (openmeteo IDs 99-101) must use Version 8.
         [96, 97, 98],
     ]
 

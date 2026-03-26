@@ -4,7 +4,8 @@ RL-friendly design:
 - Requires TWO separate author searches and cross-page comparison
 - Dynamic data: engagement metrics change continuously as users interact
 - Large entity pool: C(81,2)×2 metrics×2 result counts = 12,960 variants
-- Computation required: sum metric across N books for each author, compare
+- Computation required: sum metric across N books for each author, compute difference
+- Numeric answer (absolute difference) avoids 50% random baseline of binary choice
 """
 
 import random
@@ -39,18 +40,20 @@ RESULT_COUNTS = [3, 5]
 PATTERNS = [
     (
         'On Open Library, search for books by "{author_a}" and "{author_b}", '
-        "both sorted by most editions. Comparing the first {n} results for each, "
-        "which author has a higher {metric_label}? Answer with the author name only."
+        "both sorted by most editions. What is the absolute difference in "
+        "{metric_label} between the first {n} results for each author? "
+        "Answer with just the number."
     ),
     (
         'Compare "{author_a}" and "{author_b}" on Open Library. For each author, '
-        "look at the top {n} books (sorted by most editions). "
-        "Which author has more {metric_label} in total? Reply with just the name."
+        "look at the top {n} books (sorted by most editions) and sum their "
+        "{metric_label}. What is the absolute difference between the two totals? "
+        "Reply with just a number."
     ),
     (
         'Search Open Library for books by "{author_a}" and by "{author_b}" '
-        "(most editions). Among each author's top {n} results, which author's books "
-        "have a higher combined {metric_label}? Answer with the author name."
+        "(most editions). Sum the {metric_label} across each author's top {n} "
+        "results. What is the absolute difference? Answer with the number only."
     ),
 ]
 
@@ -134,9 +137,10 @@ class OpenLibraryAuthorComparisonTemplate(QuestionTemplate):
         return f"""Task-Specific Rules (Open Library Author Comparison):
 - Compare: "{author_a}" vs "{author_b}"
 - Metric: {metric_label} summed across top {count} results
-- Score 1.0: Correct winning author name
-- Score 0.0: Wrong author or no answer
-- Tie rule: alphabetically earlier author name wins"""
+- Answer: absolute difference between the two totals (a single number)
+- Score 1.0: Exact difference
+- Score 0.5: Within ±10% of correct difference
+- Score 0.0: Wrong value or no answer"""
 
     async def get_ground_truth(self, validation_info: Dict[str, Any]) -> GroundTruthResult:
         collected = get_collected_data()
@@ -176,14 +180,7 @@ class OpenLibraryAuthorComparisonTemplate(QuestionTemplate):
         if isinstance(sum_b, GroundTruthResult):
             return sum_b
 
-        if sum_a == sum_b:
-            winner = min(author_a_name, author_b_name, key=str.casefold)
-        elif sum_a > sum_b:
-            winner = author_a_name
-        else:
-            winner = author_b_name
-
-        return GroundTruthResult.ok(winner)
+        return GroundTruthResult.ok(str(abs(sum_a - sum_b)))
 
     @staticmethod
     def _sum_metric(
@@ -202,7 +199,6 @@ class OpenLibraryAuthorComparisonTemplate(QuestionTemplate):
             collected,
             search_query=search_query,
             sort=sort,
-            allow_unsorted_fallback=True,
         )
         if data is None:
             ol_keys = [k for k in collected if k.startswith("ol:")][:5]

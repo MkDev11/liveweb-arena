@@ -94,67 +94,17 @@ AUTHOR_POOL = [
 ]
 
 # Separate pool for engagement templates (T96/T97/T98).
-# Curated for strong want_to_read_count / ratings_count coverage.
-# Does NOT modify AUTHOR_POOL to preserve author_editions reproducibility.
-ENGAGEMENT_AUTHOR_POOL = [
-    # --- Shared with AUTHOR_POOL (56 authors) ---
-    ("Charles Dickens", "charles dickens"),
-    ("Jane Austen", "jane austen"),
-    ("William Shakespeare", "william shakespeare"),
-    ("Mark Twain", "mark twain"),
-    ("Oscar Wilde", "oscar wilde"),
-    ("Edgar Allan Poe", "edgar allan poe"),
-    ("Virginia Woolf", "virginia woolf"),
-    ("George Orwell", "george orwell"),
-    ("Agatha Christie", "agatha christie"),
-    ("Ernest Hemingway", "ernest hemingway"),
-    ("Jules Verne", "jules verne"),
-    ("H. G. Wells", "h g wells"),
-    ("Arthur Conan Doyle", "arthur conan doyle"),
-    ("Mary Shelley", "mary shelley"),
-    ("Franz Kafka", "franz kafka"),
-    ("Victor Hugo", "victor hugo"),
-    ("Miguel de Cervantes", "miguel de cervantes"),
-    ("Alexandre Dumas", "alexandre dumas"),
-    ("Thomas Hardy", "thomas hardy"),
-    ("Rudyard Kipling", "rudyard kipling"),
-    ("Robert Louis Stevenson", "robert louis stevenson"),
-    ("Louisa May Alcott", "louisa may alcott"),
-    ("Henry James", "henry james"),
-    ("Joseph Conrad", "joseph conrad"),
-    ("Stephen King", "stephen king"),
-    ("J.K. Rowling", "j k rowling"),
-    ("Roald Dahl", "roald dahl"),
-    ("Isaac Asimov", "isaac asimov"),
-    ("Ray Bradbury", "ray bradbury"),
-    ("Kurt Vonnegut", "kurt vonnegut"),
-    ("Toni Morrison", "toni morrison"),
-    ("Gabriel Garcia Marquez", "gabriel garcia marquez"),
-    ("F. Scott Fitzgerald", "f scott fitzgerald"),
-    ("Albert Camus", "albert camus"),
-    ("Aldous Huxley", "aldous huxley"),
-    ("George Bernard Shaw", "george bernard shaw"),
-    ("Henrik Ibsen", "henrik ibsen"),
-    ("Tennessee Williams", "tennessee williams"),
-    ("Samuel Beckett", "samuel beckett"),
-    ("P.G. Wodehouse", "p g wodehouse"),
-    ("Chinua Achebe", "chinua achebe"),
-    ("Salman Rushdie", "salman rushdie"),
-    ("Ursula K. Le Guin", "ursula k le guin"),
-    ("Philip Pullman", "philip pullman"),
-    ("Neil Gaiman", "neil gaiman"),
-    ("Terry Pratchett", "terry pratchett"),
-    ("Margaret Atwood", "margaret atwood"),
-    ("Kazuo Ishiguro", "kazuo ishiguro"),
-    ("John Steinbeck", "john steinbeck"),
-    ("William Faulkner", "william faulkner"),
-    ("Jorge Luis Borges", "jorge luis borges"),
-    ("Italo Calvino", "italo calvino"),
-    ("Umberto Eco", "umberto eco"),
-    ("Paulo Coelho", "paulo coelho"),
-    ("Isabel Allende", "isabel allende"),
-    ("Chimamanda Ngozi Adichie", "chimamanda ngozi adichie"),
-    # --- Engagement-only additions (25 authors) ---
+# Derived from AUTHOR_POOL minus authors with poor engagement data, plus
+# 25 engagement-specific additions.  Referencing AUTHOR_POOL prevents drift.
+_ENGAGEMENT_EXCLUDED = frozenset({
+    "Herman Melville", "Nathaniel Hawthorne", "Philip K. Dick",
+    "James Joyce", "Ralph Waldo Emerson", "Emily Bronte",
+    "Leo Tolstoy", "Walt Whitman", "Emily Dickinson",
+    "Rabindranath Tagore", "Fyodor Dostoevsky", "Haruki Murakami",
+    "Anton Chekhov", "Octavia Butler",
+})
+
+_ENGAGEMENT_ADDITIONS = [
     ("Charlotte Bronte", "charlotte bronte"),
     ("Jack London", "jack london"),
     ("Daniel Defoe", "daniel defoe"),
@@ -181,6 +131,10 @@ ENGAGEMENT_AUTHOR_POOL = [
     ("Anne Rice", "anne rice"),
     ("Dan Brown", "dan brown"),
 ]
+
+ENGAGEMENT_AUTHOR_POOL = [
+    entry for entry in AUTHOR_POOL if entry[0] not in _ENGAGEMENT_EXCLUDED
+] + _ENGAGEMENT_ADDITIONS
 
 RESULT_COUNTS = [3, 5, 7, 10]
 
@@ -281,10 +235,6 @@ class OpenLibraryAuthorEditionsTemplate(QuestionTemplate):
         if not search_query:
             search_query = f'author:"{author_query}"'
 
-        # NOTE: author_editions does NOT use allow_unsorted_fallback=True because
-        # the start_url already navigates the agent to the correct sorted page.
-        # The new engagement templates (96-98) enable it because the agent may
-        # independently search without specifying sort order.
         data = find_author_search_entry(
             collected, search_query=search_query, sort=sort,
         )
