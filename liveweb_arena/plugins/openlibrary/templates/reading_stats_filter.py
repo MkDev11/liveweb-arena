@@ -3,8 +3,9 @@
 RL-friendly design:
 - Requires searching for an author and scanning engagement metrics per book
 - Dynamic data: want_to_read counts and ratings change continuously
-- Large entity pool: 81 authors × 2 metrics × 4 thresholds × 3 result counts = 1,944 variants
+- Entity pool: 81 authors × (wtr: 4 thresholds × 3 counts + rc: 4 thresholds × 1 count) = 1,296 variants
 - Counting task: agent must check each book against a threshold (no single-sort shortcut)
+- ratings_count variants capped to N=5 to limit GT-fail from sparse OL data
 """
 
 import random
@@ -40,6 +41,10 @@ THRESHOLDS: Dict[ReaderMetric, List[int]] = {
 }
 
 RESULT_COUNTS = [5, 10, 15]
+
+# ratings_count is sparse in OL data (22% of authors missing at N=5, 57% at N=10).
+# Cap to N=5 for ratings_count to keep GT-fail exposure under ~11%.
+_RATINGS_RESULT_COUNTS = [5]
 
 PATTERNS = [
     (
@@ -85,7 +90,8 @@ class OpenLibraryReadingStatsFilterTemplate(QuestionTemplate):
         )
 
         author_name, author_query = rng.choice(ENGAGEMENT_AUTHOR_POOL)
-        count = rng.choice(RESULT_COUNTS)
+        counts = _RATINGS_RESULT_COUNTS if metric == ReaderMetric.RATINGS_COUNT else RESULT_COUNTS
+        count = rng.choice(counts)
         threshold = rng.choice(THRESHOLDS[metric])
 
         search_query = f'author:"{author_query}"'

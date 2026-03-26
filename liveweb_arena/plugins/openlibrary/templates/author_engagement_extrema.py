@@ -3,10 +3,11 @@
 RL-friendly design:
 - Requires searching for an author and scanning multiple results
 - Dynamic data: want_to_read counts and ratings change continuously
-- Entity pool: 81 authors × (highest: 2 metrics × 7 counts + lowest: 1 metric × 3 counts) = 1,377 variants
+- Entity pool: 81 authors × (highest-wtr: 7 + highest-rc: 2 + lowest-wtr: 3) = 972 variants
 - Computation required: must compare values across N books to find extremum
 - Strict sort matching: GT only accepts data from sort=editions pages (no unsorted fallback)
 - Missing ratings_count causes GT failure; only want_to_read_count defaults to 0 when absent
+- ratings_count variants capped to N∈{3,5} to limit GT-fail from sparse OL data
 """
 
 import random
@@ -52,6 +53,10 @@ RESULT_COUNTS = [3, 5, 7, 10, 15, 20, 25]
 # At work_count >= 10, many authors have missing want_to_read_count entries
 # that coerce to 0, making the GT answer = alphabetically first zero-book.
 _LOWEST_RESULT_COUNTS = [3, 5, 7]
+
+# ratings_count is sparse in OL data (20-40% of top-N missing at N≥7).
+# Cap to small N where coverage is highest to limit GT-fail exposure.
+_RATINGS_RESULT_COUNTS = [3, 5]
 
 PATTERNS = {
     ExtremaType.HIGHEST: [
@@ -99,14 +104,20 @@ class OpenLibraryAuthorEngagementExtremaTemplate(QuestionTemplate):
 
         author_name, author_query = rng.choice(ENGAGEMENT_AUTHOR_POOL)
         extrema = rng.choice(list(ExtremaType))
-        counts = _LOWEST_RESULT_COUNTS if extrema == ExtremaType.LOWEST else RESULT_COUNTS
+        pool = _LOWEST_METRICS if extrema == ExtremaType.LOWEST else list(EngagementMetric)
+        metric = rng.choice(pool)
+
+        if extrema == ExtremaType.LOWEST:
+            counts = _LOWEST_RESULT_COUNTS
+        elif metric == EngagementMetric.RATINGS_COUNT:
+            counts = _RATINGS_RESULT_COUNTS
+        else:
+            counts = RESULT_COUNTS
         count = (
             counts[variant % len(counts)]
             if variant is not None
             else rng.choice(counts)
         )
-        pool = _LOWEST_METRICS if extrema == ExtremaType.LOWEST else list(EngagementMetric)
-        metric = rng.choice(pool)
 
         search_query = f'author:"{author_query}"'
         pattern = rng.choice(PATTERNS[extrema])
