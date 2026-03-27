@@ -146,6 +146,9 @@ class TaskRegistry:
         86: ("openmeteo", "openmeteo_comparison"),
         87: ("openmeteo", "openmeteo_hourly_extrema"),
         88: ("openmeteo", "openmeteo_forecast_trend"),
+        99: ("openmeteo", "openmeteo_hourly_threshold"),
+        100: ("openmeteo", "openmeteo_sunrise_sunset"),
+        101: ("openmeteo", "openmeteo_hourly_time_of"),
 
         # ArXiv templates
         90: ("arxiv", "arxiv_paper_info"),
@@ -189,6 +192,8 @@ class TaskRegistry:
         # Version 7: Open Library engagement & comparison templates (PR #13)
         # NOTE: PR #14 (openmeteo IDs 99-101) must use Version 8.
         [96, 97, 98],
+        # Version 8: Additional Open Meteo templates
+        [99, 100, 101],
     ]
 
     # Combination registry: list of template ID tuples
