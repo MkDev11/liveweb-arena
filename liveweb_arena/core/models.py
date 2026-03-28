@@ -42,3 +42,4 @@ class TrajectoryStep:
     action_result: str = ""
     prompt: Optional[str] = None  # Actual prompt sent to LLM
     raw_response: Optional[str] = None  # Raw LLM response (used for history and conversation)
+    memory_snapshot: str = ""

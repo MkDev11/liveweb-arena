@@ -155,6 +155,7 @@ class AgentProtocol(ABC):
         trajectory: List[TrajectoryStep],
         current_step: int,
         max_steps: int,
+        working_memory: Optional[str] = None,
     ) -> str:
         """Build the per-step user message with current observation."""
 
@@ -182,8 +183,13 @@ Title: {title}
 {accessibility_tree}
 ```
 
+## State
+
 ### Recent Actions
 {recent_actions}
+
+### Working Memory
+{working_memory}
 
 **Step {current_step}/{max_steps}** ({remaining_steps} steps remaining){last_step_warning}
 """
@@ -198,6 +204,7 @@ def _build_step_prompt_common(
     trajectory: List[TrajectoryStep],
     current_step: int,
     max_steps: int,
+    working_memory: Optional[str] = None,
     max_recent_steps: int = 5,
     format_step_fn=None,
 ) -> str:
@@ -217,6 +224,8 @@ def _build_step_prompt_common(
     else:
         recent_actions = "(no actions yet)"
 
+    working_memory_text = (working_memory or "").strip() or "(empty)"
+
     remaining_steps = max_steps - current_step
     last_step_warning = _LAST_STEP_WARNING if remaining_steps == 0 else ""
 
@@ -225,13 +234,12 @@ def _build_step_prompt_common(
         title=obs.title,
         accessibility_tree=obs.accessibility_tree,
         recent_actions=recent_actions,
+        working_memory=working_memory_text,
         current_step=current_step,
         max_steps=max_steps,
         remaining_steps=remaining_steps,
         last_step_warning=last_step_warning,
     )
-
-
 class FunctionCallingProtocol(AgentProtocol):
     """
     Standard OpenAI function calling protocol.
@@ -249,12 +257,21 @@ class FunctionCallingProtocol(AgentProtocol):
         """Build OpenAI-format tool definitions from BROWSER_ACTIONS."""
         tools = []
         for name, spec in BROWSER_ACTIONS.items():
+            parameters = json.loads(json.dumps(spec["parameters"]))
+            parameters.setdefault("properties", {})["memory_patch"] = {
+                "type": "string",
+                "description": (
+                    "Optional simplified diff patch for working memory. "
+                    "Use the format '@@' on the first line, then lines starting with '- ' "
+                    "to delete an exact memory line or '+ ' to add a new memory line."
+                ),
+            }
             tools.append({
                 "type": "function",
                 "function": {
                     "name": name,
                     "description": spec["description"],
-                    "parameters": spec["parameters"],
+                    "parameters": parameters,
                 },
             })
         return tools
@@ -285,6 +302,7 @@ class FunctionCallingProtocol(AgentProtocol):
         trajectory: List[TrajectoryStep],
         current_step: int = 1,
         max_steps: int = 30,
+        working_memory: Optional[str] = None,
     ) -> str:
         def format_step(step: TrajectoryStep) -> str:
             if step.action:
@@ -296,9 +314,13 @@ class FunctionCallingProtocol(AgentProtocol):
 
         prompt = _build_step_prompt_common(
             obs, trajectory, current_step, max_steps,
-            self._max_recent_steps, format_step,
+            working_memory, self._max_recent_steps, format_step,
         )
-        return prompt + "\nWhat is your next action? Use one of the available tools."
+        return (
+            prompt
+            + "\nWhat is your next action? Use one of the available tools."
+            + "\nYou may optionally include one memory_patch string in your tool arguments."
+        )
 
     def get_tools(self) -> List[dict]:
         return self._tools
@@ -334,7 +356,10 @@ class FunctionCallingProtocol(AgentProtocol):
         # Normalize stop action format for compatibility with existing agent_loop
         if fn_name == "stop":
             answers = params.get("answers", {})
+            memory_patch = params.get("memory_patch")
             params = {"final": {"answers": answers}}
+            if memory_patch is not None:
+                params["memory_patch"] = memory_patch
 
         return BrowserAction(action_type=fn_name, params=params)
 
@@ -353,8 +378,11 @@ class FunctionCallingProtocol(AgentProtocol):
                 # Denormalize stop params back to tool format
                 final = step.action.params.get("final", {})
                 args = {"answers": final.get("answers", {})}
+                memory_patch = step.action.params.get("memory_patch")
+                if memory_patch is not None:
+                    args["memory_patch"] = memory_patch
             else:
-                args = step.action.params
+                args = dict(step.action.params)
 
             tool_call_id = f"call_{step.step_num}"
             messages.append({

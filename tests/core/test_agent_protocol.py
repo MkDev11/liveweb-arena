@@ -28,6 +28,7 @@ def test_tools_have_valid_openai_format(protocol):
         assert tool["type"] == "function"
         assert "name" in tool["function"]
         assert "parameters" in tool["function"]
+        assert "memory_patch" in tool["function"]["parameters"]["properties"]
 
 
 # ── parse_response: ToolCall dataclass (from chat_with_tools) ─────
@@ -80,6 +81,20 @@ def test_parse_stop_normalizes_params(protocol):
     action = protocol.parse_response("", [tc])
     assert action.action_type == "stop"
     assert action.params == {"final": {"answers": {"a1": "42"}}}
+
+
+def test_parse_toolcall_with_memory_patch(protocol):
+    tc = ToolCall(
+        id="call_3",
+        function={
+            "name": "goto",
+            "arguments": '{"url": "https://example.com", "memory_patch": "@@\\n+ BTC price = 104230"}',
+        },
+    )
+    action = protocol.parse_response("", [tc])
+    assert action.action_type == "goto"
+    assert action.params["url"] == "https://example.com"
+    assert action.params["memory_patch"] == "@@\n+ BTC price = 104230"
 
 
 # ── parse_response: edge cases ────────────────────────────────────
@@ -137,6 +152,29 @@ def test_serialize_stop_denormalizes(protocol):
     assert tc["function"]["name"] == "stop"
 
 
+def test_serialize_keeps_memory_patch(protocol):
+    step = _make_step(
+        1,
+        "goto",
+        {"url": "https://example.com", "memory_patch": "@@\n+ BTC price = 104230"},
+    )
+    msgs = protocol.serialize_step(step)
+    args = json.loads(msgs[1]["tool_calls"][0]["function"]["arguments"])
+    assert args["memory_patch"] == "@@\n+ BTC price = 104230"
+
+
+def test_serialize_stop_keeps_memory_patch(protocol):
+    step = _make_step(
+        1,
+        "stop",
+        {"final": {"answers": {"a": "1"}}, "memory_patch": "@@\n- stale fact"},
+        action_result="Task completed",
+    )
+    msgs = protocol.serialize_step(step)
+    args = json.loads(msgs[1]["tool_calls"][0]["function"]["arguments"])
+    assert args == {"answers": {"a": "1"}, "memory_patch": "@@\n- stale fact"}
+
+
 def test_serialize_parse_failed_step(protocol):
     obs = BrowserObservation(url="https://x.com", title="X", accessibility_tree="tree")
     step = TrajectoryStep(
@@ -182,3 +220,40 @@ def test_roundtrip_stop(protocol):
 
     assert action2.action_type == "stop"
     assert action2.params == action.params
+
+
+def test_build_step_prompt_includes_memory_state(protocol):
+    obs = BrowserObservation(url="https://example.com/btc", title="BTC", accessibility_tree="tree")
+    step = _make_step(0, "goto", {"url": "https://example.com/btc"})
+
+    prompt = protocol.build_step_prompt(
+        obs=obs,
+        trajectory=[step],
+        current_step=2,
+        max_steps=6,
+        working_memory="BTC price = 104230",
+    )
+
+    assert "## State" in prompt
+    assert "### Recent Actions" in prompt
+    assert "### Working Memory" in prompt
+    assert "BTC price = 104230" in prompt
+    assert "Step 0: goto" in prompt
+    assert "Visited URLs (latest 5)" not in prompt
+    assert "Current URL:" not in prompt
+
+
+def test_build_step_prompt_empty_memory(protocol):
+    obs = BrowserObservation(url="https://example.com", title="Example", accessibility_tree="tree")
+
+    prompt = protocol.build_step_prompt(
+        obs=obs,
+        trajectory=[],
+        current_step=1,
+        max_steps=4,
+        working_memory="",
+    )
+
+    assert "### Working Memory" in prompt
+    assert "(empty)" in prompt
+    assert "memory_patch" in prompt
