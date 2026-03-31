@@ -394,7 +394,9 @@ class CacheManager:
                 )
 
                 if can_extract:
-                    # Sequential: fetch page, then extract GT from HTML
+                    # Sequential: fetch page, then try to extract GT from HTML.
+                    # If the plugin returns None (URL not extractable), fall
+                    # back to the separate fetch_api_data call.
                     html, accessibility_tree = await self._fetch_page_with_retry(
                         url, plugin,
                     )
@@ -405,6 +407,14 @@ class CacheManager:
                             f"API data extraction from HTML failed: {e}",
                             url=url,
                         )
+                    if api_data is None:
+                        try:
+                            api_data = await plugin.fetch_api_data(url)
+                        except Exception as e:
+                            raise CacheFatalError(
+                                f"API data fetch failed (GT will be invalid): {e}",
+                                url=url,
+                            )
                 elif need_api:
                     # Concurrent: page + API fetch in parallel (with retry)
                     page_task = asyncio.ensure_future(
