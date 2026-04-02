@@ -20,7 +20,7 @@ CACHE_SOURCE = "stooq"
 # Global rate limiter: ALL Stooq CSV requests must go through this.
 # Shared across fetch_cache_api_data (homepage bulk) and fetch_single_asset_data (detail).
 # 0.5s interval: homepage bulk (28 symbols) completes in ~14s, under 25s prefetch timeout.
-_global_csv_limiter = RateLimiter(min_interval=0.5)
+_global_csv_limiter = RateLimiter(min_interval=1.0)
 
 # Rate limit tracking - once hit, don't retry until reset.
 # Per-context: each evaluation gets its own rate limit state via contextvars,
@@ -28,6 +28,24 @@ _global_csv_limiter = RateLimiter(min_interval=0.5)
 _rate_limited: contextvars.ContextVar[bool] = contextvars.ContextVar(
     "_stooq_rate_limited", default=False
 )
+
+# Process-global daily limit flag.  Unlike _rate_limited (per-eval ContextVar),
+# this is visible to ALL evaluations in the same process so that when ANY eval
+# discovers the daily limit is exhausted, every subsequent request fails fast
+# instead of burning additional quota.
+_global_daily_limit_hit: bool = False
+
+
+def _is_daily_limited() -> bool:
+    """Check if Stooq daily limit has been hit (process-global OR per-eval)."""
+    return _global_daily_limit_hit or _rate_limited.get()
+
+
+def _set_daily_limited():
+    """Mark daily limit as hit (both process-global and per-eval)."""
+    global _global_daily_limit_hit
+    _global_daily_limit_hit = True
+    _rate_limited.set(True)
 
 # Negative cache: symbols that returned no data in this evaluation.
 # Prevents repeated API calls for symbols that are temporarily unavailable.
@@ -164,7 +182,7 @@ class StooqClient:
             StooqRateLimitError: If API rate limit is exceeded
         """
         # If already rate limited, raise immediately
-        if _rate_limited.get():
+        if _is_daily_limited():
             raise StooqRateLimitError(
                 "Stooq API daily limit exceeded. Cache is empty. "
                 "Wait for daily reset or manually populate cache."
@@ -188,7 +206,7 @@ class StooqClient:
 
             # Check for rate limit error
             if "Exceeded the daily hits limit" in csv_text:
-                _rate_limited.set(True)
+                _set_daily_limited()
                 logger.error("Stooq API daily limit exceeded!")
                 raise StooqRateLimitError(
                     "Stooq API daily limit exceeded. Wait for reset or use cached data."
@@ -264,7 +282,7 @@ async def fetch_cache_api_data() -> Optional[Dict[str, Any]]:
 
                     text = await response.text()
                     if "Exceeded the daily hits limit" in text:
-                        _rate_limited.set(True)
+                        _set_daily_limited()
                         logger.error("Stooq API daily limit exceeded during bulk fetch")
                         break
 
@@ -398,7 +416,7 @@ async def fetch_single_asset_data(symbol: str) -> Optional[Dict[str, Any]]:
     since Stooq's CSV API requires suffixed symbols for some markets.
     Uses negative cache to avoid repeated requests for symbols with no data.
     """
-    if _rate_limited.get():
+    if _is_daily_limited():
         raise StooqRateLimitError("Stooq API rate limited (persistent for this session)")
 
     neg = _get_negative_cache()
@@ -425,7 +443,7 @@ async def fetch_single_asset_data(symbol: str) -> Optional[Dict[str, Any]]:
 
                     text = await response.text()
                     if "Exceeded the daily hits limit" in text:
-                        _rate_limited.set(True)
+                        _set_daily_limited()
                         raise StooqRateLimitError("Stooq API daily limit exceeded")
 
                     if "No data" in text:

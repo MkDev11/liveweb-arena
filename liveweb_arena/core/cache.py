@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Default TTL: 48 hours
-DEFAULT_TTL = 48 * 3600
+DEFAULT_TTL = 72 * 3600  # 3 days
 
 
 class CacheFatalError(Exception):
@@ -416,26 +416,45 @@ class CacheManager:
                                 url=url,
                             )
                 elif need_api:
-                    # Concurrent: page + API fetch in parallel (with retry)
+                    # Concurrent: page + API fetch in parallel (with retry).
+                    # Use asyncio.wait with FIRST_EXCEPTION so that a fast API
+                    # failure (e.g. daily rate limit) cancels the slow page
+                    # fetch instead of wasting a Playwright browser launch.
                     page_task = asyncio.ensure_future(
                         self._fetch_page_with_retry(url, plugin),
                     )
                     api_task = asyncio.ensure_future(plugin.fetch_api_data(url))
 
+                    done, pending = await asyncio.wait(
+                        [page_task, api_task],
+                        return_when=asyncio.FIRST_EXCEPTION,
+                    )
+
+                    # Cancel any still-running task
+                    for t in pending:
+                        t.cancel()
+                        try:
+                            await t
+                        except (asyncio.CancelledError, Exception):
+                            pass
+
+                    # Collect results / errors
                     page_error = None
                     api_error = None
 
-                    try:
-                        html, accessibility_tree = await page_task
-                    except Exception as e:
-                        page_error = e
-                        api_task.cancel()
+                    if page_task.done() and not page_task.cancelled():
+                        page_error = page_task.exception()
+                        if page_error is None:
+                            html, accessibility_tree = page_task.result()
+                    else:
+                        page_error = asyncio.CancelledError("cancelled: API failed first")
 
-                    if page_error is None:
-                        try:
-                            api_data = await api_task
-                        except Exception as e:
-                            api_error = e
+                    if api_task.done() and not api_task.cancelled():
+                        api_error = api_task.exception()
+                        if api_error is None:
+                            api_data = api_task.result()
+                    else:
+                        api_error = asyncio.CancelledError("cancelled: page failed first")
 
                     if page_error is not None:
                         raise CacheFatalError(
@@ -473,11 +492,26 @@ class CacheManager:
                 log("Cache", f"SAVED {page_type} - {url_display(normalized)} ({elapsed:.1f}s)")
                 return cached
 
-            except CacheFatalError:
+            except CacheFatalError as e:
                 # Refresh failed — try stale cache as fallback
                 stale = self._load_stale(cache_file, need_api)
                 if stale:
-                    log("Cache", f"STALE {page_type} (refresh failed, using expired) - {url_display(normalized)}")
+                    # Backoff: update fetched_at so we don't re-fetch on every
+                    # request.  Duration depends on failure type — persistent
+                    # failures (CAPTCHA, rate limit) get full TTL; transient
+                    # failures (network, timeout) get 1/4 TTL.
+                    error_msg = str(e).lower()
+                    if "captcha" in error_msg or "challenge" in error_msg:
+                        stale.fetched_at = time.time()
+                        backoff_label = f"{self.ttl // 3600}h (CAPTCHA)"
+                    elif "rate limit" in error_msg or "daily limit" in error_msg:
+                        stale.fetched_at = time.time()
+                        backoff_label = f"{self.ttl // 3600}h (rate limit)"
+                    else:
+                        stale.fetched_at = time.time() - self.ttl * 0.75
+                        backoff_label = f"{self.ttl // 4 // 3600}h (transient)"
+                    self._save(cache_file, stale)
+                    log("Cache", f"STALE {page_type} (refresh failed, backoff {backoff_label}) - {url_display(normalized)}")
                     return stale
                 raise  # No stale data available, propagate the error
         finally:
