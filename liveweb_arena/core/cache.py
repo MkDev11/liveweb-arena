@@ -456,6 +456,15 @@ class CacheManager:
                     else:
                         api_error = asyncio.CancelledError("cancelled: page failed first")
 
+                    # Prioritise the REAL error: if one task was cancelled
+                    # because the other failed, report the causal failure so
+                    # that downstream backoff classification sees the right
+                    # keywords (e.g. "rate limit", "CAPTCHA").
+                    if api_error is not None and not isinstance(api_error, asyncio.CancelledError):
+                        raise CacheFatalError(
+                            f"API data fetch failed (GT will be invalid): {api_error}",
+                            url=url,
+                        )
                     if page_error is not None:
                         raise CacheFatalError(
                             f"Page fetch failed (browser cannot load): {page_error}",
