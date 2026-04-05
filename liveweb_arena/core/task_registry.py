@@ -134,6 +134,8 @@ class TaskRegistry:
         76: ("hackernews", "hackernews_extrema_comparison"),
         77: ("hackernews", "hackernews_category_comparison"),
         78: ("hackernews", "hackernews_news_summary"),
+        110: ("hackernews", "hackernews_derived_metric"),
+        111: ("hackernews", "hackernews_weighted_rank"),
 
         # Open Library templates
         80: ("openlibrary", "openlibrary_book_stats"),
@@ -194,6 +196,8 @@ class TaskRegistry:
         [96, 97, 98],
         # Version 8: Additional Open Meteo templates
         [99, 100, 101],
+        # Version 9: Additional Hacker News templates
+        [110, 111],
     ]
 
     # Combination registry: list of template ID tuples

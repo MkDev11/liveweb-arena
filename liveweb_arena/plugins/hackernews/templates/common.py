@@ -34,18 +34,28 @@ def get_homepage_stories(
     *,
     story_count: int,
     required_fields: Sequence[str],
+    max_rank: Optional[int] = None,
 ) -> Tuple[Optional[List[Dict[str, Any]]], Optional[GroundTruthResult]]:
     """
     Return top-N homepage stories with required fields.
 
     Story records are identified from collector entries using:
     - key not prefixed with user:/hn_category:/external:/hn_external:
-    - dict payload with integer rank in [1, story_count]
+    - dict payload with integer rank in [1, scan_limit]
     - all required_fields present and not None
+
+    When ``max_rank`` is None (default), requires contiguous ranks 1..story_count
+    (strict mode — backward-compatible with existing templates).
+
+    When ``max_rank`` is provided, scans ranks 1..max_rank and returns the first
+    ``story_count`` valid stories by rank, tolerating gaps from job postings or
+    items missing required fields.
     """
     collected, failure = get_collected_data()
     if failure is not None:
         return None, failure
+
+    scan_limit = max_rank if max_rank is not None else story_count
 
     stories: List[Dict[str, Any]] = []
     for key, data in collected.items():
@@ -53,7 +63,7 @@ def get_homepage_stories(
             continue
 
         rank_raw = data.get("rank")
-        if not isinstance(rank_raw, int) or rank_raw < 1 or rank_raw > story_count:
+        if not isinstance(rank_raw, int) or rank_raw < 1 or rank_raw > scan_limit:
             continue
 
         if any(data.get(field) is None for field in required_fields):
@@ -76,18 +86,29 @@ def get_homepage_stories(
             f"Duplicate homepage ranks in collected data: {deduped}"
         )
 
-    required_ranks = list(range(1, story_count + 1))
-    missing_ranks = [rank for rank in required_ranks if rank not in rank_to_story]
-    if missing_ranks:
+    if max_rank is not None:
         available_ranks = sorted(rank_to_story.keys())
-        return None, GroundTruthResult.not_collected(
-            f"Only {len(rank_to_story)} stories have complete data (need {story_count}). "
-            f"Available ranks: {available_ranks}. "
-            f"Missing ranks: {missing_ranks}. "
-            f"Agent may need to visit more story detail pages."
-        )
+        if len(available_ranks) < story_count:
+            return None, GroundTruthResult.not_collected(
+                f"Only {len(available_ranks)} stories have complete data "
+                f"(need {story_count}) within ranks 1-{scan_limit}. "
+                f"Available ranks: {available_ranks}. "
+                f"Agent may need to visit more story detail pages."
+            )
+        ordered = [rank_to_story[rank] for rank in available_ranks[:story_count]]
+    else:
+        required_ranks = list(range(1, story_count + 1))
+        missing_ranks = [rank for rank in required_ranks if rank not in rank_to_story]
+        if missing_ranks:
+            available_ranks = sorted(rank_to_story.keys())
+            return None, GroundTruthResult.not_collected(
+                f"Only {len(rank_to_story)} stories have complete data (need {story_count}). "
+                f"Available ranks: {available_ranks}. "
+                f"Missing ranks: {missing_ranks}. "
+                f"Agent may need to visit more story detail pages."
+            )
+        ordered = [rank_to_story[rank] for rank in required_ranks]
 
-    ordered = [rank_to_story[rank] for rank in required_ranks]
     return ordered, None
 
 
