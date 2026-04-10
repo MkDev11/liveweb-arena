@@ -50,6 +50,14 @@ DETAIL_PAGE_PATTERNS = [
     r"taostats\.io/subnets?/\d+",
     # Weather: /City or /City?format=...
     r"wttr\.in/[A-Za-z+]+(?:\?|$)",
+    # ArXiv: /abs/2603.16870
+    r"arxiv\.org/abs/\d{4}\.\d{4,5}",
+    # OpenLibrary: /works/OL103123W or /works/OL103123W/Dune
+    r"openlibrary\.org/works/ol\d+w(?:/|$)",
+    # Open-Meteo: /en/docs?latitude=35.68&longitude=139.65
+    r"open-meteo\.com/en/docs\?.*latitude=",
+    # HackerNews: /item?id=12345
+    r"news\.ycombinator\.com/item\?id=\d+",
 ]
 
 
@@ -387,16 +395,17 @@ class StepwiseRewardCalculator:
         Normalize URL for duplicate detection.
 
         For most sites: remove query/fragment (path-based routing)
-        For query-based sites (stooq, wttr.in): keep essential query params
+        For query-based sites (stooq, wttr.in, hackernews, open-meteo): keep essential query params
         """
         try:
+            from urllib.parse import parse_qs, urlencode
+
             p = urlparse(url)
             domain = p.netloc.lower()
 
             # Stooq uses query params for asset identification: /q/?s=aapl.us
             if "stooq.com" in domain and p.query:
                 # Keep the 's' parameter which identifies the asset
-                from urllib.parse import parse_qs, urlencode
                 params = parse_qs(p.query)
                 if 's' in params:
                     kept_query = urlencode({'s': params['s'][0]})
@@ -406,6 +415,23 @@ class StepwiseRewardCalculator:
             # /Tokyo and /Tokyo?format=j1 should be same location
             if "wttr.in" in domain:
                 return urlunparse((p.scheme, p.netloc, p.path, '', '', ''))
+
+            # HackerNews uses query params for item identification: /item?id=12345
+            if "ycombinator.com" in domain and p.query:
+                params = parse_qs(p.query)
+                if 'id' in params:
+                    kept_query = urlencode({'id': params['id'][0]})
+                    return urlunparse((p.scheme, p.netloc, p.path, '', kept_query, ''))
+
+            # Open-Meteo uses query params for location: ?latitude=X&longitude=Y
+            if "open-meteo.com" in domain and p.query:
+                params = parse_qs(p.query)
+                if 'latitude' in params and 'longitude' in params:
+                    kept_query = urlencode({
+                        'latitude': params['latitude'][0],
+                        'longitude': params['longitude'][0],
+                    })
+                    return urlunparse((p.scheme, p.netloc, p.path, '', kept_query, ''))
 
             # Default: remove query/fragment (path-based sites like CoinGecko)
             return urlunparse((p.scheme, p.netloc, p.path, '', '', ''))
@@ -442,5 +468,27 @@ class StepwiseRewardCalculator:
         match = re.search(r"wttr\.in/([A-Za-z+]+?)(?:\?|$)", url)
         if match:
             return match.group(1).replace("+", " ")
+
+        # ArXiv: /abs/2603.16870 -> 2603.16870
+        match = re.search(r"arxiv\.org/abs/(\d{4}\.\d{4,5})", url_lower)
+        if match:
+            return match.group(1)
+
+        # OpenLibrary: /works/OL103123W -> ol103123w
+        match = re.search(r"openlibrary\.org/works/(ol\d+w)", url_lower)
+        if match:
+            return match.group(1)
+
+        # Open-Meteo: /en/docs?latitude=35.68&longitude=139.65 -> 35.68,139.65
+        if "open-meteo.com" in url_lower:
+            lat = re.search(r"latitude=([0-9.-]+)", url_lower)
+            lon = re.search(r"longitude=([0-9.-]+)", url_lower)
+            if lat and lon:
+                return f"{lat.group(1)},{lon.group(1)}"
+
+        # HackerNews: /item?id=12345 -> 12345
+        match = re.search(r"news\.ycombinator\.com/item\?id=(\d+)", url_lower)
+        if match:
+            return match.group(1)
 
         return None
